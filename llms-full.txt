@@ -1,6 +1,6 @@
 # 曦寒开发框架 · 全站正文
 
-共 111 页。索引见 https://framework.docs.xihanfun.com/llms.txt
+共 115 页。索引见 https://framework.docs.xihanfun.com/llms.txt
 
 ---
 
@@ -9,6 +9,53 @@
 # 更新日志 · XiHan.Framework
 
 本文件记录 XiHan.Framework 各版本的变更。每条标注 **新增 / 修复 / 优化 / 调整 / 升级 / 移除** 类别。只收录使用者可感知的变更，仓库自身的配置、CI、测试工程与构建脚本不列入。框架以 NuGet 包形式发布，升级前请留意「调整」类中的破坏性变更。
+
+## v4.8.0 (2026-10-23)
+
+::: warning 升级须知
+- 客户端 IP 只取转发头中间件按受信代理还原后的连接地址，不再直接读 `X-Forwarded-For`、`X-Real-IP`。反向代理不在本机（另一台主机上的 nginx、容器网络里的网关、云负载均衡）的部署，须在新配置节 `XiHan:Web:Api:ForwardedHeaders` 里配置代理地址 `KnownProxies` 或网段 `KnownNetworks`，多级代理同时调大 `ForwardLimit`，否则日志、会话与限流看到的客户端 IP 都是代理的地址；地址或网段写错、网段主机位不为 0、`ForwardLimit` 小于 1 时启动失败。同机经本机回环转发的不用改
+- `HttpContextClientInfoProvider` 改为注入 `IIpRegionResolver`，不再实现 `IDisposable`；直接 `new` 它的代码改传 `IHttpContextAccessor` 与 `IIpRegionResolver`，经 `AddXiHanWebCore` 注册的不受影响
+:::
+
+- **新增** 可配置条件的求值器（`XiHan.Framework.Authorization` 的 Conditions）：属性先登记值种类（字符串、数字、布尔、日期时间、日期、时刻、IP）、是否多值与旧名别名，可登记以 `.*` 结尾的一族属性；条件按组内且、组间或编译求值，集合、区间、跨零点的时刻区间与 IP 网段都能写；取不到值的子句按不命中计、取反也不翻转，模型绑定后才能补的属性记为待定；要说明时给出每组每个子句的取值与原因。登记项经 `AddXiHanConditionAttributes` 追加，`ConditionOperatorRules` 公开运算符与值种类的搭配规则，编辑界面可只列出能用的运算符
+- **新增** `IPermissionChecker.CheckAsync(PermissionCheckContext)`：判定带上用户、权限码、主体与当前请求，结果区分授予、没有授予与条件不满足；缺省实现转调 `IsGrantedAsync`，现有检查器不用改。`HybridPermissionAuthorizationHandler` 改调它，拒绝时附带失败原因
+- **新增** 请求访问闸门 `IRequestAccessGate`：在租户解析之后、会话闸门与授权之前按请求放行或拒绝，匿名接口、Minimal API 与实时通道的协商请求同样经过；拒绝写统一响应信封，可带附加响应头（如 `Retry-After`）。没有注册闸门时直接放行
+- **新增** `IIpRegionResolver` 与默认实现 `Ip2RegionResolver`：IPv4 与 IPv6 各用一个离线库，进程内只载入一次；`IpRegion` 给出国家、省份、城市、运营商与国家代码。`XiHanClientInfoOptions` 新增 `Ip2RegionV6DbPath`（缺省 `IpDatabases/ip2region_v6.xdb`）
+- **新增** 受信代理配置 `XiHan:Web:Api:ForwardedHeaders`（`XiHanForwardedHeadersOptions`）：本机回环始终受信，配置项是追加，见升级须知
+- **调整** 授权被拒且授权处理器给了失败原因时，403 改写统一响应信封，消息取第一条原因（如「权限不足」「当前条件下不允许此操作」）并带 traceId；没有失败原因的拒绝与 401 照旧，宿主已注册自己的 `IAuthorizationMiddlewareResultHandler` 时不覆盖
+- **修复** 客户端带上 `X-Forwarded-For` 或 `X-Real-IP` 请求头就能伪造登录日志、会话与访问日志里的 IP 和归属地
+- **修复** IPv6 地址的归属地一直为空：之前只加载一个离线库
+- **修复** `X-Timezone` 与 `TimeZoneHelper` 不认旧 IANA 别名（如 `Asia/Calcutta`、`Europe/Kiev`）与 Windows 时区 ID：新版 tzdata 去掉别名后，`DateTime` 字段按 UTC 墙钟输出且不带偏移，前端显示差一个时区。现按同一时区换算，仍解析不了时按 UTC 输出带 `+00:00` 的 ISO 8601；新增 `TimeZoneHelper.TryGetTimeZone`
+- **优化** 文档站生态导航补「设计器」一组，版本下拉加 NuGet 入口，加公告横幅，文档主题升至 1.2.1
+- **升级** ModelContextProtocol 升至 2.3.0、OpenTelemetry 升至 1.20.1、Scalar.AspNetCore 升至 2.18.2、Swashbuckle.AspNetCore 升至 10.3.1、Scriban 升至 7.5.1，发布 v4.8.0
+
+## v4.7.1 (2026-10-21)
+
+::: warning 升级须知
+- 动态 API 在 `POST`/`PUT`/`PATCH` 方法上未显式标注的集合参数改为请求体绑定，与文件同处的改为表单绑定；原先通过查询字符串传集合（如 `?ids=1&ids=2`）的接口需给参数加 `[FromQuery]`
+- 动态 API 方法同时有显式 `[FromBody]` 参数与表单文件参数时启动报错；去掉 `[FromBody]` 即随表单提交
+- `IFileStorageProvider` 新增 `UploadManyAsync` 与 `DeleteManyAsync`；继承 `FileStorageProviderBase` 的 Provider 自动获得默认实现，直接实现接口的 Provider 需补齐这两个方法
+:::
+
+- **新增** `IFileStorageProvider.UploadManyAsync` / `DeleteManyAsync`：一次处理多个文件。批量上传结果与请求顺序一一对应，单个失败不影响其余文件；批量删除尝试全部路径后汇总抛出失败项
+- **修复** 动态 API 的 `List<T>`/`T[]`/`IEnumerable<T>` 参数在 `POST`/`PUT`/`PATCH` 上被推断为查询字符串，JSON 数组请求体到达服务方法时为空集合；显式标注 `[FromBody]` 的集合参数在装配时报「不能使用 FromBody」
+- **修复** 动态 API 上传方法在文件参数之外另带 DTO 参数时，DTO 被推断为请求体，请求一律返回 415；现随同一表单绑定
+- **升级** 发布 v4.7.1
+
+## v4.7.0 (2026-10-15)
+
+::: warning 升级须知
+- 人工任务同时配置 `Assignees` 与 `AssigneesExpression` 时改为合并去重，此前只取 `Assignees`
+- `WorkflowInstance` 新增 `Outcome`，自行持久化工作流实例的存储需一并保存该字段
+:::
+
+- **新增** 工作流人工任务受理人规则 `AssigneeRules`（`{ type, values }`）与 `IWorkflowAssigneeProvider` 注册表：内置 `User` / `Starter` / `Expression`，角色、部门、上级主管等由应用注册解析器；新增 `ExcludeStarter`（跳过发起人）、`EmptyAssigneeStrategy`（找不到受理人时报错 / 自动通过 / 自动驳回 / 转交兜底受理人）、`FallbackAssigneeRules` 与 `CcRules`
+- **新增** 结束节点可声明 `Outcome`：执行时同步调用 `IWorkflowOutcomeHandler` 回写业务并立即结束整个实例，结果写入 `WorkflowInstance.Outcome`；回调失败时实例进入故障态，重试时再次回调。构建器新增 `WithAssigneeRule`、`AddOutcomeEnd`
+- **新增** 故障实例可直接取消或终止，不必先重试成功
+- **新增** `XiHan.Framework.Cli`（.NET 工具，命令 `xihan-framework`）：包、模块、配置节与文档的离线知识库，提供 `list` / `info` / `doc` / `config` / `search` / `changelog` 命令与 stdio MCP 服务端；`setup` 为 Claude Code、Cursor、VS Code 写入钉住版本的 MCP 配置与使用技能
+- **新增** 文档站新增「AI 辅助开发」一册：For Agents、MCP Server、CLI、LLMs.txt
+- **修复** 传递依赖 `System.Security.Cryptography.Pkcs` 的高危漏洞 CVE-2026-84008 与中危漏洞 CVE-2026-70162：`XiHan.Framework.Data`（经 SqlSugarCore → Oracle.ManagedDataAccess.Core）与 `XiHan.Framework.Bot.Email`（经 MailKit → MimeKit）钉到 10.0.13
+- **升级** .NET 运行库随 10.0.13 补丁更新，Microsoft.Extensions.AI 升至 10.11.0、Microsoft Agent Framework 升至 1.25.0，发布 v4.7.0
 
 ## v4.6.2 (2026-10-13)
 
@@ -1116,7 +1163,7 @@ XiHan.Framework 是面向企业级应用的**模块化后端框架**，专为前
 | 依赖 | 版本 | 说明 |
 | --- | --- | --- |
 | .NET SDK | **10.0+** | 必需 |
-| IDE | Visual Studio 2022 / Rider / VS Code | 任选 |
+| IDE | Visual Studio 2026 / Rider / VS Code | 任选 |
 | 数据库 | PostgreSQL / MySQL / SQLite 等 | 仅在用到 `Data` 模块时需要 |
 | Redis | 6.0+ | 仅在用到分布式缓存时需要 |
 
@@ -1464,6 +1511,397 @@ public class HelloAppService : ApplicationServiceBase
 - [框架概述](./overview)：设计原则、分层架构、技术栈
 - [模块总览](./packages/)：逐包查阅
 - [为什么选择曦寒基础应用](https://basicapp.docs.xihanfun.com/why)：如果你要的是一套现成的中后台
+
+---
+
+来源：https://framework.docs.xihanfun.com/ai/agents
+
+# For Agents
+
+给 Claude Code、Cursor、Codex、GitHub Copilot 这类 AI 编程工具的入口：一段可以直接粘贴的提示词，加上 XiHan.Framework 为 AI 准备的全部资料从哪里取。
+
+::: tip 和「AI 与 MCP」不是一回事
+本册讲的是**用 AI 工具写基于 XiHan.Framework 的代码**。要在自己的应用里接入大模型、把应用能力暴露成 MCP 工具，见开发指南的 [AI 与 MCP](../guide/ai)。
+:::
+
+## 复制这段提示词
+
+把下面这段放进对话，或写进项目的 `AGENTS.md` / `CLAUDE.md` / `.cursor/rules`：
+
+```text
+这个项目用 XiHan.Framework 写后端。写代码前先读这两份文档并按其中的规范执行：
+- https://framework.docs.xihanfun.com/ai/agents.md
+- https://framework.docs.xihanfun.com/ai/SKILL.md
+
+XiHan.Framework 的包名、模块类名、配置键与 API 以项目引用的版本为准，可能与你记得的不同，也不要套用别的框架的写法。
+不确定时用 CLI 查证（数据随工具离线，版本与项目对齐，需要 .NET 10 SDK）：
+  dnx XiHan.Framework.Cli@<版本> --yes -- info <包或模块>      安装命令、模块类与依赖
+  dnx XiHan.Framework.Cli@<版本> --yes -- config <配置节或包>  配置键、类型与缺省值
+  dnx XiHan.Framework.Cli@<版本> --yes -- search <关键字>      在文档里检索
+支持 MCP 时，运行 dnx XiHan.Framework.Cli@<版本> --yes -- setup --client <claude|cursor|vscode|codex> 接入 XiHan.Framework 的 MCP 服务端。
+```
+
+`<版本>` 写项目里 `XiHan.Framework.*` 包引用的版本。
+
+## Agent 能拿到什么
+
+### CLI：离线、与版本一致的知识库
+
+[`XiHan.Framework.Cli`](./cli) 是一个 .NET 工具，把全部包的模块类与 `[DependsOn]` 依赖、包依赖、全部配置节（属性、类型、缺省值与说明）、整站文档与更新日志打包在 NuGet 包里，不联网，查到的内容与工具的版本一致；它与框架各包同号发布。
+
+```bash
+xihan-framework list                          # 按层列出包与模块类
+xihan-framework info Caching                  # 安装命令、模块依赖、包依赖、配置节
+xihan-framework config XiHan:Caching:Redis    # 配置节的属性、类型、缺省值与配置片段
+xihan-framework search 分布式锁               # 在全部文档里检索
+xihan-framework doc guide/dynamic-api         # 指南全文
+xihan-framework changelog 4.6.0 4.6.2         # 两版之间的变更
+```
+
+不想安装时把 `xihan-framework` 换成 `dnx XiHan.Framework.Cli@<版本> --yes --`。
+
+### MCP Server：把 CLI 接进 AI 工具
+
+`xihan-framework mcp` 以 stdio 启动 [MCP 服务端](./mcp)，AI 工具可以直接调用 `xihan_framework_info`、`xihan_framework_config`、`xihan_framework_search` 等工具。
+
+```json
+{
+  "mcpServers": {
+    "xihan-framework": {
+      "command": "dnx",
+      "args": ["XiHan.Framework.Cli@<版本>", "--yes", "--", "mcp"]
+    }
+  }
+}
+```
+
+在项目里运行 `setup` 会读出项目引用的框架版本，并把配置写到所在 git 仓库的根目录。
+
+### 技能：XiHan.Framework 的使用规范
+
+[`SKILL.md`](https://framework.docs.xihanfun.com/ai/SKILL.md) 是写给 AI 的使用规范：先查证再写代码、应用骨架、模块与 `[DependsOn]`、动态 API 应用服务、配置节与基础设施、常见错误。它随工具发布，`setup --mode skill` 把它写进项目：Claude Code 写到 `.claude/skills/xihan-framework/`，其余工具写到 `.agents/skills/xihan-framework/`。MCP 提示词 `xihan-framework-expert` 用的也是这一份。
+
+### LLMs.txt：直接放进上下文的文档
+
+文档站构建时产出 [机读资产](./llms)：`llms.txt` 索引、`llms-full.txt` 全站正文、`llms-guide.txt` 开发指南、`llms-packages.txt` 模块总览，以及每一页的 Markdown（站点地址后加 `.md`，如 [guide/caching.md](https://framework.docs.xihanfun.com/guide/caching.md)）。
+
+## 各部分的关系
+
+| 部分 | 回答什么 | 什么时候用 |
+| --- | --- | --- |
+| 提示词与技能 | 规范：该怎么写、不该怎么写 | 每次会话开头，或长期写进项目的 Agent 规则 |
+| CLI | 事实：某个包有哪些模块、依赖与配置键 | 加包引用、写 `[DependsOn]`、写 appsettings 之前 |
+| MCP Server | 同上，以工具的形式交给 AI | AI 工具支持 MCP 时，替代手动跑 CLI |
+| LLMs.txt | 整份文档 | 工具不能运行命令、只能读网页时 |
+
+CLI、MCP 与技能都离线且跟随版本；LLMs.txt 在文档站上，内容对应最新发布的版本。
+
+## 前端与整套应用
+
+前端用 XiHan.UI 时，它有自己的 CLI 与 MCP 服务端，见 [视图组件的 AI 辅助开发](https://ui.docs.xihanfun.com/ai/agents)。基于 XiHan.BasicApp 二次开发时，两边一起接入，见 [基础应用的 AI 辅助开发](https://basicapp.docs.xihanfun.com/ai/agents)。
+
+## 相关
+
+- [快速上手](../quickstart) · [模块系统](../guide/modularity) · [配置与选项](../guide/configuration)
+
+---
+
+来源：https://framework.docs.xihanfun.com/ai/cli
+
+# CLI
+
+`XiHan.Framework.Cli` 是 XiHan.Framework 的命令行工具：在终端里查包、模块类与依赖、配置节、文档与更新日志，也是 [MCP 服务端](./mcp) 的载体。命令名 `xihan-framework`。
+
+## 特点
+
+- **离线**：整站文档、各包的项目文件、模块类与选项类在打包时嵌进工具，查询不联网。
+- **与版本一致**：工具与框架各包同号发布。在项目里运行时，工具扫描项目文件与 props 里的 `XiHan.Framework.*` 包引用，版本与自身不一致时在 stderr 提示改用同号的工具。
+- **配置键从源码读**：配置节、属性、类型与缺省值取自选项类的 `SectionName` 常量与属性声明，说明取自 XML 文档注释，不靠手抄。
+- **给机器读**：所有查询命令都可输出 JSON；查不到时给出候选。
+
+## 安装
+
+不安装，用 .NET 10 SDK 自带的 `dnx` 按版本直接运行：
+
+```bash
+dnx XiHan.Framework.Cli@<版本> --yes -- info Caching
+```
+
+装成全局工具：
+
+```bash
+dotnet tool install --global XiHan.Framework.Cli --version <版本>
+xihan-framework info Caching
+```
+
+或者装成仓库的本地工具，版本记在 `.config/dotnet-tools.json` 里随项目一起升级：
+
+```bash
+dotnet new tool-manifest
+dotnet tool install XiHan.Framework.Cli --version <版本>
+dotnet xihan-framework info Caching
+```
+
+需要 .NET 10 SDK。
+
+## 快速开始
+
+```bash
+xihan-framework list --layer Web                # Web 层的包
+xihan-framework info XiHanWebApiModule          # 按模块类名查包
+xihan-framework config Authentication           # 认证包的全部配置节
+xihan-framework config XiHan:Authentication:Jwt # 一个配置节的属性与缺省值
+xihan-framework search 工作单元 事务            # 同时提到两个词的页面
+xihan-framework doc guide/uow                   # 指南全文
+```
+
+## 命令
+
+### 查询
+
+| 命令 | 参数 | 说明 |
+| --- | --- | --- |
+| `list` | `--layer <层>` `--query <关键字>` | 按所在层列出包与模块类 |
+| `info` | `<包\|模块>` | 安装命令、模块类与 `[DependsOn]`、引用的框架包与第三方包、绑定的配置节 |
+| `doc` | `[<页面\|包>]` | 文档页全文；写包名时取它的参考页；不带参数列出全部页面 |
+| `config` | `[<配置节\|包\|选项类>]` | 不带参数列出全部配置节；带参数时逐项列出属性、类型、缺省值与说明，并给出按缺省值写出的 appsettings 片段 |
+| `search` | `<关键字…>` | 在全部文档里检索，多个词需同时出现，按相关度排序 |
+| `changelog` | `[<版本> [<版本>]]` `--keyword <词>` | 不带版本取最近一版；一个版本取这一版；两个版本取两者之间（不含较早的那一版）；`--keyword` 只留提到它的条目，可写包名 |
+
+### 集成
+
+| 命令 | 参数 | 说明 |
+| --- | --- | --- |
+| `mcp` | — | 以 stdio 启动 MCP 服务端，见 [MCP Server](./mcp) |
+| `setup` | `--client <claude\|cursor\|vscode\|codex>` `--mode <mcp\|skill\|both>` `--pin <版本>` `--dry-run` `--check` | 把钉住版本的 MCP 配置与使用技能写进项目 |
+
+### 包名
+
+包名可以写全名（`XiHan.Framework.Caching`）、短名（`Caching`、`Web.Api`、`web-api`）或模块类名（`XiHanCachingModule`）。文档页写站内路径，如 `guide/caching`、`quickstart`、`packages/web-api`。
+
+## 全局选项
+
+| 选项 | 说明 | 缺省 |
+| --- | --- | --- |
+| `--format <markdown\|json>` | 输出格式 | `markdown` |
+| `-v, --version` | 打印版本 | — |
+| `-h, --help` | 打印帮助 | — |
+
+## 退出码
+
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 成功 |
+| `1` | 查不到（stderr 给出候选）或配置核对未通过 |
+| `2` | 用法错误：未知命令、缺参数、选项取值不合法 |
+
+## 相关
+
+- [For Agents](./agents) · [MCP Server](./mcp) · [LLMs.txt](./llms)
+
+---
+
+来源：https://framework.docs.xihanfun.com/ai/llms
+
+# LLMs.txt
+
+文档站在构建时产出一组给大语言模型读的机读资产，内容与站点正文同源。AI 工具读取它们即可了解 XiHan.Framework 的模块、API 与用法。
+
+## 可用资源
+
+| 文件 | 说明 |
+| --- | --- |
+| [llms.txt](https://framework.docs.xihanfun.com/llms.txt) | 索引：全部页面的标题、一句话摘要与地址，以及下列资产的入口 |
+| [llms-full.txt](https://framework.docs.xihanfun.com/llms-full.txt) | 全站正文 |
+| [llms-guide.txt](https://framework.docs.xihanfun.com/llms-guide.txt) | 开发指南：按能力域组织的用法与原理 |
+| [llms-packages.txt](https://framework.docs.xihanfun.com/llms-packages.txt) | 模块总览：每个包的 API 清单与配置项全表 |
+| [ai/SKILL.md](https://framework.docs.xihanfun.com/ai/SKILL.md) | 给 AI 编程工具的使用规范，见 [For Agents](./agents) |
+
+**单页 Markdown**：任何一页的站点地址后加 `.md` 即可取到这一页的 Markdown，如 [guide/caching.md](https://framework.docs.xihanfun.com/guide/caching.md)、[packages/web-api.md](https://framework.docs.xihanfun.com/packages/web-api.md)。每页正文上方的「取本页 Markdown」也指向它。
+
+`llms-full.txt` 体积较大，多数场景读 `llms.txt` 索引后按需取单页，或只取用到的分册。
+
+## 在 AI 工具中使用
+
+所有工具都可以用同一段提示词：
+
+```text
+阅读 https://framework.docs.xihanfun.com/llms.txt 了解 XiHan.Framework，写代码时按需读取其中列出的页面（站点地址后加 .md 取 Markdown），以文档为准，不要凭记忆写包名、模块类名与配置键。
+```
+
+| 工具 | 做法 |
+| --- | --- |
+| Claude Code | 写进项目的 `CLAUDE.md`，或用 `/memory` 记下 |
+| Cursor | 在对话中用 `@Docs` 添加 `https://framework.docs.xihanfun.com/llms.txt`，或写进 `.cursor/rules` |
+| Codex | 写进项目的 `AGENTS.md` |
+| GitHub Copilot | 写进 `.github/copilot-instructions.md` |
+| Windsurf | 写进 `.windsurf/rules` |
+
+能运行命令或接入 MCP 的工具，优先用 [CLI](./cli) 或 [MCP Server](./mcp)：数据离线且与项目版本一致，配置节还能精确到属性的类型与缺省值；文档站上的资产对应最新发布的版本。
+
+## 相关
+
+- [For Agents](./agents) · [MCP Server](./mcp) · [CLI](./cli)
+
+---
+
+来源：https://framework.docs.xihanfun.com/ai/mcp
+
+# MCP Server
+
+本页介绍如何通过 Model Context Protocol（MCP）在 AI 编程工具中使用 XiHan.Framework 的知识库。
+
+## 什么是 MCP
+
+[Model Context Protocol](https://modelcontextprotocol.io) 是一个开放协议，让 AI 模型调用外部工具与数据源。接入 XiHan.Framework 的 MCP 服务端后，AI 写代码前可以直接查到包、模块类、`[DependsOn]` 依赖与配置键，而不是凭记忆猜。
+
+## 官方 MCP Server
+
+服务端由 [`XiHan.Framework.Cli`](./cli) 提供，命令是 `xihan-framework mcp`，走 stdio 传输，基于官方的 ModelContextProtocol C# SDK。数据随 NuGet 包离线发布、不联网，内容与工具的版本一致；工具与框架各包同号发布，钉住与项目相同的版本号即可查到项目实际用的包与配置。
+
+### 工具
+
+| 工具 | 说明 |
+| --- | --- |
+| `xihan_framework_list` | 按所在层列出全部包与模块类，可按层或关键字过滤 |
+| `xihan_framework_info` | 一个包的安装命令、模块类与 `[DependsOn]`、引用的框架包与第三方包、绑定的配置节 |
+| `xihan_framework_doc` | 文档页全文：开发指南、包参考页（写包名即可）或开始页；不传参数时列出全部页面 |
+| `xihan_framework_config` | 配置节的属性、类型、缺省值与说明，附按缺省值写出的 appsettings 片段；不传参数时列出全部配置节 |
+| `xihan_framework_search` | 在全部文档里检索关键字，按相关度返回页面与摘录 |
+| `xihan_framework_changelog` | 查某一版或两版之间的更新日志，可按包名过滤 |
+
+工具都是只读的。
+
+### 提示词
+
+| 提示词 | 说明 |
+| --- | --- |
+| `xihan-framework-expert` | 以 XiHan.Framework 专家身份工作，内容就是 [使用技能](https://framework.docs.xihanfun.com/ai/SKILL.md) |
+| `xihan-framework-module` | 按描述写一个框架模块，参数 `description` |
+
+### 配置
+
+不安装工具、按版本直接运行（需要 .NET 10 SDK 自带的 `dnx`）：
+
+```json
+{
+  "mcpServers": {
+    "xihan-framework": {
+      "command": "dnx",
+      "args": ["XiHan.Framework.Cli@<版本>", "--yes", "--", "mcp"]
+    }
+  }
+}
+```
+
+或者先装成全局工具，再直接调用命令：
+
+```bash
+dotnet tool install --global XiHan.Framework.Cli --version <版本>
+```
+
+```json
+{
+  "mcpServers": {
+    "xihan-framework": {
+      "command": "xihan-framework",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+`<版本>` 写项目里 `XiHan.Framework.*` 包引用的版本。省略版本号时 `dnx` 取最新版，查到的内容可能比项目里引用的新。
+
+### 自动写入
+
+在项目里运行 `setup`，它会扫描项目文件与 props 里的 `XiHan.Framework.*` 包引用读出版本，把钉住版本的配置写进对应文件，只改 `xihan-framework` 这一项，不动已有的其他服务。配置写在所在 git 仓库的根目录（不在仓库里时写在向上第一个含解决方案或项目文件的目录），扫描也从这里开始：
+
+```bash
+dnx XiHan.Framework.Cli --yes -- setup --client claude              # .mcp.json，并写入技能
+dnx XiHan.Framework.Cli --yes -- setup --client cursor --mode mcp   # 只写 .cursor/mcp.json
+dnx XiHan.Framework.Cli --yes -- setup --client vscode              # .vscode/mcp.json
+dnx XiHan.Framework.Cli --yes -- setup --client codex               # 打印 ~/.codex/config.toml 片段
+dnx XiHan.Framework.Cli --yes -- setup --client claude --dry-run    # 只打印，不写文件
+dnx XiHan.Framework.Cli --yes -- setup --client claude --check      # 核对配置是否就绪、版本是否一致
+```
+
+`--mode` 取 `mcp`、`skill` 或 `both`（缺省）；`--pin <版本>` 显式指定版本。配置文件已存在但无法解析为 JSON（例如带注释）时，`setup` 不改动文件并给出提示，按 `--dry-run` 打印的片段手动合并即可。
+
+## 在各工具中配置
+
+### Claude Code
+
+项目根目录的 `.mcp.json` 使用上面的写法，也可以用命令添加：
+
+```bash
+claude mcp add --scope project xihan-framework -- dnx XiHan.Framework.Cli@<版本> --yes -- mcp
+```
+
+Windows（非 WSL）上 Claude Code 需要经 `cmd /c` 调用 `dnx`，`setup --client claude` 会自动写成这种形式：
+
+```json
+{
+  "mcpServers": {
+    "xihan-framework": {
+      "command": "cmd",
+      "args": ["/c", "dnx", "XiHan.Framework.Cli@<版本>", "--yes", "--", "mcp"]
+    }
+  }
+}
+```
+
+### Cursor
+
+写在项目的 `.cursor/mcp.json` 或用户目录的 `~/.cursor/mcp.json`，使用通用写法。
+
+### VS Code
+
+写在项目的 `.vscode/mcp.json`，顶层键是 `servers`，并标明传输类型：
+
+```json
+{
+  "servers": {
+    "xihan-framework": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": ["XiHan.Framework.Cli@<版本>", "--yes", "--", "mcp"]
+    }
+  }
+}
+```
+
+### Visual Studio
+
+Visual Studio 读取解决方案目录下的 `.mcp.json` 或 `.vs/mcp.json`，写法同 VS Code（顶层键 `servers`）。
+
+### Codex
+
+写在 `~/.codex/config.toml`：
+
+```toml
+[mcp_servers.xihan-framework]
+command = "dnx"
+args = [
+  "XiHan.Framework.Cli@<版本>",
+  "--yes",
+  "--",
+  "mcp"
+]
+```
+
+### 其他工具
+
+其他支持 stdio MCP 的工具，按各自的配置位置填入同一组 `command` 与 `args` 即可。
+
+## 备选：LLMs.txt
+
+工具不支持 MCP、也不能运行命令时，让它读文档站的 [机读资产](./llms)：`https://framework.docs.xihanfun.com/llms.txt` 是索引，任何一页在站点地址后加 `.md` 即可取到 Markdown。
+
+## 相关
+
+- [For Agents](./agents) · [CLI](./cli) · [LLMs.txt](./llms)
+- 在自己的应用里对外提供 MCP 服务端：[XiHan.Framework.Web.Mcp](../packages/web-mcp)
 
 ---
 
@@ -5365,6 +5803,16 @@ public async Task<InvoiceDto> CreateInvoiceAsync(InvoiceCreateDto input) { … }
 
 方法名以 `Get` 开头会被推导为 GET，请求体自然绑不上。**分页方法必须显式标 `[HttpPost]`**。方法上显式标注的 `[HttpGet]` / `[HttpPost]` 优先于前缀推导。
 
+### 一次上传多个文件
+
+参数写成 `List<IFormFile>`、`IFormFile[]`、`IFormFileCollection`，或放进 DTO 的 `List<IFormFile>` 属性，前端把多个文件追加到同一个 `FormData` 字段即可，不必逐个调用接口。
+
+```csharp
+public Task<List<FileDto>> UploadFilesAsync(List<IFormFile> files, FileUploadOptionsDto options)
+```
+
+同一方法里的 DTO 与集合参数随表单一起提交，字段直接用属性名。`string remark` 这类简单参数默认走查询字符串，要放进表单就标 `[FromForm]`。不要给与文件同处的参数标 `[FromBody]`：表单请求没有 JSON 请求体，框架会在启动时报错。
+
 ### 改了动词映射表，前端全 404 了
 
 改 `Conventions.HttpMethodConventions`、`PreserveRoutePredicate`、`UseLowercaseRoutes`、`Routes.*` 中任何一个，都会让**已有接口的 URL 变化**。上线后再动这些开关等于一次破坏性变更，前端必须同步改。
@@ -7235,7 +7683,7 @@ var visible = await ObjectExtensionManager.Instance
 
 ## 时区感知的时间输出
 
-存储统一 UTC，输出按请求头 `X-Timezone`（IANA 标识，如 `Asia/Shanghai`）换算。解析入口：
+存储统一 UTC，输出按请求头 `X-Timezone`（IANA 标识，如 `Asia/Shanghai`；`Asia/Calcutta` 这类旧别名与 `China Standard Time` 这类 Windows ID 同样接受）换算。解析入口：
 
 ```csharp
 private static string? ResolveUserTimeZone()
@@ -7244,12 +7692,18 @@ private static string? ResolveUserTimeZone()
 }
 ```
 
-| 类型 | 带 `X-Timezone` | 无 `X-Timezone` 或时区非法 |
-| --- | --- | --- |
-| `DateTime` | 值按 UTC 标记后 `ConvertTimeFromUtc`，输出 `2026-08-05 20:30:00` | 按原值输出 `yyyy-MM-dd HH:mm:ss` |
-| `DateTimeOffset` | `ConvertTime` 后输出**无偏移墙钟** `2026-08-05 20:30:00` | 输出 ISO 8601 带偏移 `2026-08-05T12:30:00+00:00` |
+| 类型 | 带 `X-Timezone` | 带 `X-Timezone` 但解析不了 | 无 `X-Timezone` |
+| --- | --- | --- | --- |
+| `DateTime` | 值按 UTC 标记后 `ConvertTimeFromUtc`，输出 `2026-08-05 20:30:00` | 按 UTC 输出 ISO 8601 带偏移 `2026-08-05T12:30:00+00:00` | 按原值输出 `yyyy-MM-dd HH:mm:ss` |
+| `DateTimeOffset` | `ConvertTime` 后输出**无偏移墙钟** `2026-08-05 20:30:00` | 按 UTC 输出 ISO 8601 带偏移 `2026-08-05T12:30:00+00:00` | 输出 ISO 8601 带偏移 `2026-08-05T12:30:00+00:00` |
 
-两种类型换算后的输出格式一致，都是无偏移墙钟——前端拿到直接按本地显示即可，不会被浏览器时区二次偏移。时区标识解析失败时（`TimeZoneInfo.FindSystemTimeZoneById` 抛异常）静默回退到无换算行为，不会让请求失败。
+两种类型换算后的输出格式一致，都是无偏移墙钟——前端拿到直接按本地显示即可，不会被浏览器时区二次偏移。时区解析与 `TimeZoneHelper.TryGetTimeZone` 同一套规则：直接查找，找不到就把 IANA ID 与 Windows ID 互转后再找；Linux 上仍找不到时，在系统时区目录里取与它属于同一个 Windows 时区的时区（ID 按序数取第一个），同组时区现行规则一致，换算结果与 Windows 节点相同。
+
+还是解析不了时不让请求失败，也不按无偏移墙钟输出——那样客户端会把 UTC 当本地时间显示，静默差一个时区偏移。两种类型都按 UTC 输出带 `+00:00` 的 ISO 8601，且不随转换器构造时传入的格式，客户端仍按正确的瞬间解析；输出带偏移本身就说明这次没有按用户时区换算。
+
+::: tip 旧别名从哪来
+新版 tzdata（如 Ubuntu 26，以及把旧链接拆进 `tzdata-legacy` 的发行版与容器镜像）不再带 `Asia/Calcutta`、`America/Indianapolis`、`Europe/Kiev`、`Asia/Katmandu` 这类旧别名，但浏览器 `Intl` 报出的时区、Windows 节点上存下的时区偏好常常正是它们。上面的同组落点就是为这种情况准备的，不需要在服务器上另装别名包。
+:::
 
 ::: warning 业务时间多为 `DateTimeOffset`
 只覆盖 `DateTime` 是不够的。审计字段、业务时间字段大量使用 `DateTimeOffset`，它默认自带偏移，前端会按浏览器时区渲染，看上去"换时区没生效"。四个转换器要一起挂。
@@ -7366,7 +7820,8 @@ var options = JsonSerializerOptionsHelper.Create(
 | 请求体某字段收不到 | `PropertyNameCaseInsensitive = false`，属性名大小写必须与驼峰完全一致 |
 | `oAuthProviders` 这种怪命名 | camelCase 策略只把首字符变小写，不拆词 |
 | 换了 `X-Timezone` 时间没变 | 只覆盖了 `DateTime` 没覆盖 `DateTimeOffset`；或自加的时间转换器排到了时区版前面 |
-| 时间格式忽然带上 `+08:00` | 请求没带 `X-Timezone`（或时区标识非法），`DateTimeOffset` 回退到 ISO 8601 带偏移 |
+| 时间格式忽然带上 `+08:00` | 请求没带 `X-Timezone`，`DateTimeOffset` 回退到 ISO 8601 带偏移 |
+| 带了 `X-Timezone`，时间却带上 `+00:00` | 服务器找不到该时区，也找不到与它等价的时区，按 UTC 输出；核对请求头的值 |
 | 脏数据变成 0 / `Guid.Empty` / 默认时间 | 转换器读取失败静默落默认值，不抛异常 |
 | 枚举返回的是数字不是名字 | 该 DTO **属性**上标了 `[JsonConverter(typeof(NumericEnumConverter<T>))]`——属性级优先级最高。标在枚举类型上则无效 |
 | `IgnoreNullValues = true` 没效果 | 该属性未被 `ToSystemOptions()` 消费，改用 `DefaultIgnoreCondition` |
@@ -12391,7 +12846,7 @@ public override void OnApplicationInitialization(ApplicationInitializationContex
 | --- | --- |
 | `Authorization: Bearer <token>` | 身份认证 |
 | `X-Language` | 请求文化，决定本地化文案与枚举标签 |
-| `X-Timezone` | IANA 时区，决定时间输出 |
+| `X-Timezone` | IANA 时区（旧别名与 Windows ID 同样接受），决定时间输出 |
 | `X-Trace-Id` | 入站链路 ID（未启用 OpenTelemetry 时作为 TraceId 回退来源）；响应头必回 |
 
 ## 异常处理
@@ -12597,7 +13052,7 @@ var definition = WorkflowDefinitionBuilder.Create("leave-request", "请假审批
 实例永远绑定它启动时那个具体版本（`DefinitionId` + `DefinitionVersion`）。改流程的正确姿势是 `CreateNewVersionAsync` 出新草稿、改完发布，而不是去动已发布版本——存量实例还在按老图跑。
 :::
 
-发布校验（`WorkflowDefinitionValidator`）会一次性报出所有问题，覆盖：节点标识唯一且非空、活动类型已注册、**有且仅有一个开始节点**、开始节点无入边、连线两端存在、条件表达式语法合法、独占网关至多一条默认边、`Join` 的 `Mode` 与人工任务的 `CompletionPolicy` 取值合法、人工任务必须配 `Assignees` 或 `AssigneesExpression`、**所有节点从开始节点可达**。
+发布校验（`WorkflowDefinitionValidator`）会一次性报出所有问题，覆盖：节点标识唯一且非空、活动类型已注册、**有且仅有一个开始节点**、开始节点无入边、连线两端存在、条件表达式语法合法、独占网关至多一条默认边、`Join` 的 `Mode` 与人工任务的 `CompletionPolicy`、`EmptyAssigneeStrategy` 取值合法、人工任务至少配 `Assignees` / `AssigneesExpression` / `AssigneeRules` 之一、受理人规则类型已注册且参数合法（`Fallback` 策略必须配兜底规则）、结束节点的 `Outcome` 不为空串、**所有节点从开始节点可达**。
 
 ## 启动与驱动实例
 
@@ -12665,7 +13120,8 @@ var resumed = await engine.PublishSignalAsync(
 
 | 类型编码 | 说明 | 关键节点属性 |
 | --- | --- | --- |
-| `Start` / `End` | 流程入口 / 消耗当前令牌 | — |
+| `Start` | 流程入口 | — |
+| `End` | 消耗当前令牌；声明 `Outcome` 时为结果结束节点，回写业务后立即结束整个实例（见「结果结束节点」） | `Outcome` |
 | `Terminate` | 强制结束整个实例，不补偿 | `Reason` |
 | `Fault` | 主动置为故障 | `Message` |
 | `Log` | 记一条运行日志 | `Message`、`Level` |
@@ -12699,11 +13155,15 @@ var resumed = await engine.PublishSignalAsync(
 | 属性 | 说明 |
 | --- | --- |
 | `Assignees` | 受理人标识列表 |
-| `AssigneesExpression` | 求值为列表或逗号分隔字符串的表达式（与上一条二选一） |
+| `AssigneesExpression` | 求值为列表或逗号分隔字符串的表达式 |
+| `AssigneeRules` | 受理人规则列表 `[{ type, values }]`，按类型交给已注册的解析器（见下文） |
+| `ExcludeStarter` | 为 `true` 时从受理人中剔除流程发起人，禁止自己审批自己 |
+| `EmptyAssigneeStrategy` | 受理人解析为空时：`Fault` 节点故障（默认）/ `AutoApprove` / `AutoReject` / `Fallback` |
+| `FallbackAssigneeRules` | `Fallback` 策略使用的兜底规则 |
 | `CompletionPolicy` | `Any` 或签（默认）/ `All` 会签 / `Sequential` 依次审批 |
 | `Title` | 任务标题，支持模板，默认取节点名称 |
 | `FormData` | 表单数据字典，随待办一起给前端 |
-| `CcUserIds` | 抄送人，随任务创建事件发出 |
+| `CcUserIds` / `CcRules` | 抄送人标识与抄送规则，合并后随任务创建事件发出 |
 | `AllowedOutcomes` | 办理结果白名单 |
 
 三种完成策略的语义：
@@ -12713,6 +13173,51 @@ var resumed = await engine.PublishSignalAsync(
 | `Any` 或签 | 任一人同意即通过 | 一次性给全部受理人建待办 |
 | `All` 会签 | 全部同意才通过，任一非同意结果立即结束节点 | 一次性给全部受理人建待办 |
 | `Sequential` 依次 | 按列表顺序逐个审批，全部同意才通过 | 每次只给下一位建待办 |
+
+### 受理人规则
+
+三种来源可以并用，按 `Assignees` → `AssigneesExpression` → `AssigneeRules` 的顺序合并去重（依次审批按这个顺序排队）。`AssigneeRules` 是扩展口：框架内置三种不依赖组织数据的类型（`WorkflowAssigneeRuleTypes`），角色、部门、上级主管等由应用注册自己的解析器。
+
+| 内置类型 | 参数 | 解析结果 |
+| --- | --- | --- |
+| `User` | 受理人标识列表 | 参数本身 |
+| `Starter` | 无 | 实例的 `StarterId`（常用于「退回发起人修改」） |
+| `Expression` | 一条表达式 | 求值为列表或逗号分隔字符串 |
+
+```csharp
+.AddUserTask("manager", "主管审批", node => node
+    .WithAssigneeRule("StarterLeader", "1")      // 应用注册的类型：发起人的直属主管
+    .WithAssigneeRule(WorkflowAssigneeRuleTypes.User, "1001")
+    .WithProperty("ExcludeStarter", true)
+    .WithProperty("EmptyAssigneeStrategy", "Fallback")
+    .WithProperty("FallbackAssigneeRules", new List<WorkflowAssigneeRule>
+    {
+        new() { Type = "Role", Values = ["admin"] }
+    }))
+```
+
+自定义解析器实现 `IWorkflowAssigneeProvider`：
+
+```csharp
+public class RoleAssigneeProvider(IUserRoleRepository userRoles) : IWorkflowAssigneeProvider
+{
+    public string RuleType => "Role";
+
+    // 发布前校验参数，返回错误信息
+    public IReadOnlyList<string> Validate(WorkflowAssigneeRule rule)
+        => rule.Values.Count == 0 ? ["角色规则至少需要一个角色"] : [];
+
+    public async Task<IReadOnlyList<string>> ResolveAsync(WorkflowAssigneeResolveContext context)
+        => await userRoles.GetUserIdsAsync(context.Rule.Values, context.CancellationToken);
+}
+
+services.AddXiHanWorkflowAssigneeProvider<RoleAssigneeProvider>();
+```
+
+- 解析器按瞬时生命周期从当前执行作用域取，可以注入仓储；同一类型只允许一个解析器，重复注册在解析门面构造时直接报错。
+- 规则类型未注册时发布被拒；运行期遇到未注册类型（定义与部署不一致）节点故障，不会当作「没人可审」放过。
+- 数据源不可用必须抛异常（节点故障、可重试），**不要返回空列表**——空列表会走 `EmptyAssigneeStrategy`，配了 `AutoApprove` 就成了静默通过。
+- `AutoApprove` / `AutoReject` 会在审批轨迹 `history` 里留一条 `actorId` 为空的记录。
 
 ### 办理
 
@@ -12757,6 +13262,49 @@ public class ApprovalAppService(IWorkflowUserTaskService userTasks) : Applicatio
 | `WorkflowUserTaskTransferredEventData` | 转办 |
 
 实例级还有 `WorkflowInstanceStartedEventData` / `Completed` / `Faulted` / `Canceled` / `Terminated` / `Suspended` / `Resumed`，以及 `PublishEvent` 活动产生的 `WorkflowCustomEventData`。
+
+## 结果结束节点
+
+审批流的业务方关心的是**结论**：通过还是驳回。给结束节点声明 `Outcome`，它就成了结果结束节点：
+
+```csharp
+.AddUserTask("approve", "审批", node => node.WithAssigneeRule("Role", "finance"))
+.AddOutcomeEnd("end-approved", WorkflowUserTaskOutcomes.Approved, "通过")
+.AddOutcomeEnd("end-rejected", WorkflowUserTaskOutcomes.Rejected, "驳回")
+.AddTransition("approve", "end-approved", "outcome == 'approved'")
+.AddTransition("approve", "end-rejected", "outcome == 'rejected'")
+```
+
+执行到结果结束节点时，引擎依次做三件事：
+
+1. 调用全部已注册的 `IWorkflowOutcomeHandler`，把结论交给业务（回写单据状态、授权、发货……）；
+2. 全部成功后把结论写入 `WorkflowInstance.Outcome`；
+3. **立即结束整个实例**——其余并行分支的待办、等待点与汇聚波次作废，运行中的子实例级联终止。所以「并行会审中任一驳回即整单驳回」只需要把各分支的驳回边连到同一个驳回结束节点。
+
+没有声明 `Outcome` 的结束节点行为不变：只消耗当前令牌，所有令牌与书签结束后实例自动完成，`Outcome` 为空。
+
+```csharp
+public class ExpenseOutcomeHandler(IExpenseRepository expenses) : IWorkflowOutcomeHandler
+{
+    public async Task HandleAsync(WorkflowOutcomeContext context)
+    {
+        if (context.Definition.Code != "expense")
+        {
+            return;
+        }
+
+        // 必须幂等：重试会再次调用
+        await expenses.SetResultAsync(context.Instance.CorrelationId!, context.Outcome, context.CancellationToken);
+    }
+}
+
+services.AddTransient<IWorkflowOutcomeHandler, ExpenseOutcomeHandler>();
+```
+
+::: warning 处理器失败会让实例停在故障态
+任一处理器抛异常，结束节点故障、实例进入 `Faulted`，`Outcome` 不写入、实例不会被标记完成——业务没回写成功就不算结束。排除原因后 `RetryAsync` 会重新执行结束节点、再次调用处理器，所以处理器**必须幂等**。处理器跑在实例执行锁内，不要在里面同步驱动同一个实例。
+引擎不接管数据库事务：处理器的写入要自己包在独立工作单元里，失败时整体回滚，避免「授权写了一半、实例却故障」。
+:::
 
 ## 表达式求值器的边界
 
@@ -14641,6 +15189,7 @@ public class MyModule : XiHanModule { }
 - 存储：`IRoleStore` → `DefaultRoleStore`、`IPermissionStore` → `DefaultPermissionStore`、`IPolicyStore` → `DefaultPolicyStore`（均 Scoped）
 - 评估：`IPermissionChecker` → `DefaultPermissionChecker`、`IPolicyEvaluator` → `DefaultPolicyEvaluator`、`IAbacAttributeCollector` → `DefaultAbacAttributeCollector`、`IAbacEvaluator` → `DefaultAbacEvaluator`（均 Scoped）
 - 门面：`IAuthorizationService` → `DefaultAuthorizationService`（Scoped）
+- 条件求值：`IConditionAttributeRegistry` → `DefaultConditionAttributeRegistry`、`IConditionCompiler` → `DefaultConditionCompiler`、`IConditionEvaluator` → `DefaultConditionEvaluator`（均 Singleton；属性登记项经 `AddXiHanConditionAttributes(...)` 追加）
 - ASP.NET Core：`IAuthorizationPolicyProvider` → `HybridPermissionPolicyProvider`（Singleton）、`IAuthorizationHandler` += `HybridPermissionAuthorizationHandler`（Scoped，`TryAddEnumerable`）
 
 ## 工作原理
@@ -14656,7 +15205,7 @@ xihan.hybrid:p={URL编码的权限码};a={URL编码的ABAC策略码}
 **判定顺序（`HybridPermissionAuthorizationHandler`）**：
 
 1. 从主体声明解析 userId（`NameIdentifier` / `sub` / `userid` / `user_id`）；解析不到直接不通过。
-2. 若有权限码 → `IPermissionChecker.IsGrantedAsync` 实时校验（超管的通配 `*` 也由检查器的快照负责）；不通过则终止。
+2. 若有权限码 → `IPermissionChecker.CheckAsync(PermissionCheckContext)` 实时校验（超管的通配 `*` 也由检查器的快照负责）。上下文带主体、权限码与授权资源（端点授权时是 `HttpContext`），检查器可据此按请求求值附加条件。缺省实现转调 `IsGrantedAsync`。不通过则记下 `PermissionAuthorizationFailureReason`（原因码见 `PermissionFailureCodes`：没有授予、条件不满足、ABAC 不通过）并终止；Web.Api 据此把 403 写成带说明的统一信封。
 3. 若无 ABAC 策略码 → 直接 `Succeed`。
 4. 若有 ABAC 策略码 → `IAbacAttributeCollector` 收集主体/资源/环境属性 → `IAbacEvaluator.EvaluateAsync` 评估 → 允许才 `Succeed`。
 
@@ -14684,7 +15233,8 @@ xihan.hybrid:p={URL编码的权限码};a={URL编码的ABAC策略码}
 
 | 类型 | 关键方法 / 字段 |
 | --- | --- |
-| `IPermissionChecker` | `Task<bool> IsGrantedAsync(userId, permissionName, ct)`、`IsAnyGrantedAsync(userId, List<string>, ct)`、`IsAllGrantedAsync(...)`、`Task<List<string>> GetGrantedPermissionsAsync(userId, ct)`、`Task<bool> PermissionExistsAsync(name, ct)` |
+| `IPermissionChecker` | `Task<bool> IsGrantedAsync(userId, permissionName, ct)`、`IsAnyGrantedAsync(userId, List<string>, ct)`、`IsAllGrantedAsync(...)`、`Task<List<string>> GetGrantedPermissionsAsync(userId, ct)`、`Task<bool> PermissionExistsAsync(name, ct)`；`Task<PermissionCheckResult> CheckAsync(PermissionCheckContext, ct)`（授权处理器调用，缺省转调 `IsGrantedAsync`，需要按请求求值条件的实现覆写） |
+| `PermissionCheckContext` / `PermissionCheckResult` | 输入：`UserId`、`PermissionCode`、`Principal`、`Resource`、解析出的 `HttpContext`；结果：`IsGranted`、`FailureCode`、`FailureMessage`，静态 `Granted` / `NotGranted` / `ConditionNotMet` |
 | `IPermissionStore` | 用户/角色权限读取、授予/撤销、`GetAllPermissionsAsync`、`GetPermissionByNameAsync` |
 | `PermissionDefinition` | `Name`（唯一）、`DisplayName`、`Description`、`ParentName`、`Tag`、`IsEnabled`、`Order`、`Properties` |
 | `IRoleStore` | `GetUserRolesAsync`、`IsInRoleAsync`、`AddUserToRoleAsync` / `RemoveUserFromRoleAsync`、`GetAllRolesAsync`、`GetRoleByName/IdAsync`、`Create/Update/DeleteRoleAsync`、`GetUsersInRoleAsync` |
@@ -14719,7 +15269,8 @@ xihan.hybrid:p={URL编码的权限码};a={URL编码的ABAC策略码}
 | `AbacAuthorizeAttribute` | `[AbacAuthorize("abac策略码")]`——仅 ABAC，不校验 RBAC 权限码 |
 | `HybridPermissionRequirement` | `PermissionCode`、`AbacPolicyCode`（实现 ASP.NET Core `IAuthorizationRequirement`） |
 | `HybridPermissionPolicyProvider` | 拦截 `xihan.hybrid:` 前缀策略名，动态构建策略；其余回落默认提供器 |
-| `HybridPermissionAuthorizationHandler` | 混合判定处理器（先权限码实时校验，再 ABAC 评估） |
+| `HybridPermissionAuthorizationHandler` | 混合判定处理器（先权限码实时校验，再 ABAC 评估）；不通过时 `Fail` 并附 `PermissionAuthorizationFailureReason` |
+| `PermissionAuthorizationFailureReason` | ASP.NET Core `AuthorizationFailureReason` 的子类，多一个原因码 `Code` |
 
 ## 默认 ABAC 策略词汇
 
@@ -14735,6 +15286,74 @@ xihan.hybrid:p={URL编码的权限码};a={URL编码的ABAC策略码}
 | 其它 | 拒绝（不支持的策略） |
 
 `DefaultAbacAttributeCollector` 收集的属性包括：主体 `user_id`/`tenant_id`/`roles`/`is_authenticated` 及所有 `claim.*`；资源 `resource_type` 与反射得到的公共属性，若资源能解析出 `HttpContext` 还含 `route.*`/`query.*`/`http.method`/`http.path`/`http.client_ip`；环境 `permission_code`/`policy_code`/`utc_now`/`utc_hour`/`day_of_week`（有 `HttpContext` 时另含 `client_ip`/`request_path`/`request_method`/`user_agent`）。
+
+## 条件求值（可配置条件）
+
+`XiHan.Framework.Authorization.Conditions` 是一套与存储无关的条件求值器，给「运营在后台配置的条件」用，比如给某条授权加「仅办公网」「仅工作时间」，或者按 IP、地区、客户端拦截请求。它与上面的 ABAC 策略码是两回事：策略码写死在代码里，条件存在应用的库里、随时可改。框架只负责模型、解析、比较与求值；属性从哪里取值、条件存在哪张表，由应用决定。
+
+**模型**：
+
+- `ConditionClause`：属性名 + 运算符 + 条件值原文，可整体取反；
+- `ConditionGroup`：组内且；
+- `ConditionSet`：组间或。没有任何非空组的条件集是「无条件」，求值恒为命中。
+
+**属性登记**：属性要先登记才能用，登记项 `ConditionAttributeDescriptor` 写明值种类（字符串、数字、布尔、日期时间、日期、时刻、IP）、是否多值、旧名别名。名称以 `.*` 结尾的是一族属性，如 `resource.query.*`。
+
+```csharp
+services.AddXiHanConditionAttributes(
+    new ConditionAttributeDescriptor("subject.roleCodes", ConditionValueKind.String, IsMultiValued: true, Aliases: ["subject.role"]),
+    new ConditionAttributeDescriptor("environment.ip", ConditionValueKind.IpAddress),
+    new ConditionAttributeDescriptor("environment.time", ConditionValueKind.TimeOfDay),
+    new ConditionAttributeDescriptor("resource.query.*", ConditionValueKind.String));
+```
+
+**编译与求值**：
+
+- `IConditionCompiler.Compile` 按登记解析条件值，检查运算符配不配得上值种类。出错的子句记进 `Errors`（保存前据此拒绝），但仍保留在结果里，求值时为「无法判定」，这样存量脏数据不会让整个条件集失效。
+- 编译结果不可变，可以缓存、跨请求共用。`ReferencedAttributes` 列出被引用的属性，可据此预取。
+- `IConditionEvaluator.EvaluateAsync` 只向 `IConditionAttributeSource` 取被引用到的属性。`MemoizingConditionAttributeSource` 让同一请求里同一属性只取一次；`DictionaryConditionAttributeSource` 用于试运行和模拟上下文。
+
+```csharp
+var compiled = compiler.Compile(new ConditionSet([
+    new ConditionGroup([
+        new ConditionClause("subject.roleCodes", ConditionOperator.Contains, "admin"),
+        new ConditionClause("environment.ip", ConditionOperator.In, "10.0.0.0/8, 2001:db8::/32", IsNegated: true)
+    ])
+]), new ConditionCompileOptions { TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai") });
+
+var result = await evaluator.EvaluateAsync(compiled, new MemoizingConditionAttributeSource(mySource), explain: true);
+```
+
+**运算符**（整数值是持久化契约，不会调整）：
+
+| 运算符 | 语义 |
+| --- | --- |
+| `Equals` / `NotEquals` | 相等；字符串不区分大小写，数字按十进制，IP 按地址（IPv4 映射地址先还原）；多值属性为任一元素相等 |
+| `GreaterThan` / `GreaterThanOrEquals` / `LessThan` / `LessThanOrEquals` | 只用于数字、日期时间、日期、时刻 |
+| `Contains` / `NotContains` | 单值字符串是子串；多值属性是列表含该值 |
+| `In` / `NotIn` | 条件值是集合（JSON 数组、逗号或换行分隔）；IP 集合可以写 CIDR 网段 |
+| `Between` | 闭区间，写作 `9,18`、`[9,18]` 或 `{"min":9,"max":18}`；时刻允许跨零点，如 `22:00,06:00` |
+| `StartsWith` / `EndsWith` | 只用于字符串，不区分大小写 |
+| `IsNull` / `IsNotNull` | 取不到、空串、空列表都算空 |
+
+带 Not 的运算符是对应运算符的否定；子句上的取反再作用于结果，两者叠加时按字面计算。运算符能否用于某个属性由 `ConditionOperatorRules.IsAllowed` 判定，`ConditionOperatorRules.AllowedFor` 列出某个属性能用的全部运算符，条件编辑界面可据此只给出能用的选项，与编译器的检查一致。
+
+**结果**：
+
+- 子句结果有四种：
+  - 命中、不命中；
+  - **无法判定**：属性取不到、值转换失败或子句编译出错。按不命中计，**取反不会把它翻成命中**，这样「NOT(ip 在办公网)」在取不到 IP 时不会误判；
+  - **待定**：属性来源返回 `ConditionAttributeValue.Deferred`，表示稍后能补，如模型绑定之后才读得到的数据行属性。
+- 组：有不命中或无法判定就不命中；否则有待定就待定；否则命中。
+- 条件集：任一组命中即命中；否则有待定即待定；否则不命中。
+- 不要求说明（`explain: false`）时短路求值，不分配说明对象；要求说明时，返回每组每个子句的结果、取到的值和原因，供试运行页面展示。
+
+**IP 与时间的解析规则**：
+
+- IPv4 只收四段点分写法，不认 `10.1` 这类简写；IPv6 不收区域标识。
+- 网段的主机位必须为零：`203.0.113.5/24` 视为笔误，直接报错，不替使用者猜。
+- 不带偏移的日期时间条件值，按 `ConditionCompileOptions.TimeZone` 的墙钟解释。
+- 日期时间类属性折算成日期、时刻时，也按这个时区算。
 
 ## 使用示例
 
@@ -21143,7 +21762,7 @@ public class MyModule : XiHanModule { }
 
 ## 核心能力
 
-- **统一存储抽象**：`IFileStorageProvider` 定义上传、下载、删除、存在性检查、获取元数据、复制、移动、目录列举、预签名 URL 与分片上传全套操作，四种后端实现同一接口。
+- **统一存储抽象**：`IFileStorageProvider` 定义上传、批量上传、下载、删除、批量删除、存在性检查、获取元数据、复制、移动、目录列举、预签名 URL 与分片上传全套操作，四种后端实现同一接口。
 - **能力自描述**：每个 Provider 通过 `SupportChunkedUpload` / `SupportResumableUpload` 声明是否支持分片/断点续传。基类默认二者为 `false`，不支持的方法调用会抛 `NotSupportedException`。
 - **多提供程序管理**：`IFileStorageProviderManager` 按名称取出提供程序（带缓存），可 `TryGetProvider` 安全获取、`GetRegisteredProviderNames` 查询已注册名单。
 - **业务路由**：`IFileStorageRouter` 按业务路由键（如 `avatar`、`attachment`）解析并选择目标提供程序，支持严格匹配开关 `StrictRouteMatch`。
@@ -21170,12 +21789,14 @@ public class MyModule : XiHanModule { }
 | `string ProviderName { get; }` | 提供程序名称 |
 | `bool SupportChunkedUpload { get; }` / `bool SupportResumableUpload { get; }` | 能力声明 |
 | `Task<FileUploadResult> UploadAsync(FileUploadRequest request, ...)` | 上传文件 |
+| `Task<IReadOnlyList<FileUploadResult>> UploadManyAsync(IReadOnlyList<FileUploadRequest> requests, ...)` | 批量上传，结果与请求顺序一一对应，单个失败不影响其余文件 |
 | `Task<string> InitiateChunkedUploadAsync(ChunkedUploadInitRequest request, ...)` | 初始化分片上传，返回 uploadId |
 | `Task<ChunkUploadResult> UploadChunkAsync(ChunkUploadRequest request, ...)` | 上传单个分片 |
 | `Task<FileUploadResult> CompleteChunkedUploadAsync(ChunkedUploadCompleteRequest request, ...)` | 合并完成分片上传 |
 | `Task AbortChunkedUploadAsync(string uploadId, ...)` | 取消分片上传 |
 | `Task<Stream> DownloadAsync(string path, ...)` | 下载文件为流 |
 | `Task DeleteAsync(string path, ...)` / `Task DeleteAsync(string path, string? bucketName, ...)` | 删除文件（可指定桶） |
+| `Task DeleteManyAsync(IReadOnlyList<string> paths, string? bucketName = null, ...)` | 批量删除，全部尝试后把失败路径汇总为 `AggregateException` |
 | `Task<bool> ExistsAsync(string path, ...)` / `(string path, string? bucketName, ...)` | 存在性检查 |
 | `Task<FileMetadata> GetMetadataAsync(string path, ...)` / `(string path, string? bucketName, ...)` | 读取元数据 |
 | `Task<string> GeneratePresignedUrlAsync(string path, TimeSpan expiresIn, ...)` | 生成预签名 URL |
@@ -21341,6 +21962,7 @@ public class DownloadService
 ## 注意事项与最佳实践
 
 - **上传不抛异常**：`UploadAsync` 内部把异常收敛为 `FileUploadResult { Success=false, ErrorMessage=... }`。调用方务必检查 `result.Success`，不要只 `try/catch`。
+- **多个文件用批量方法**：一次处理多个文件时调用 `UploadManyAsync` / `DeleteManyAsync`，不要在调用方循环单条方法。批量上传逐项检查 `Success`，取消会抛出而不会被收成失败结果；批量删除会尝试每个路径，失败项在结束后汇总抛出。基类默认逐个转调单条方法，支持原生批量接口的 Provider 可覆写。
 - **分片能力先检查**：调用分片方法前先看目标 Provider 的 `SupportChunkedUpload`；MinIO 的分片方法是占位实现，调用不会报错但数据不会落盘，大文件改用 `UploadAsync`。
 - **云端未完成分片仍需生命周期策略**：框架会回收 24 小时无活动的进程内 OSS/COS 会话，但不会在请求线程批量调用远端 Abort；生产桶应配置清理未完成 Multipart Upload 的生命周期规则。
 - **本地预签名无时效**：`LocalFileStorageProvider.GeneratePresignedUrlAsync` 只是返回静态直链，`expiresIn` 被忽略，也没有鉴权。需要真实时效/鉴权控制请改用云存储 Provider。
@@ -24976,7 +25598,7 @@ public static bool IsUnlocked(string filePath)                  // 是否被其�
 
 - **`CultureHelper`**：`IsRtl` 属性、`Use(string culture, string? uiCulture = null)` 返回 `IDisposable` 临时切换文化、`IsValidCultureCode` / `IsCompatibleCulture`。
 - **`CurrencyHelper`**：`GetAllCurrencies()`、`GetCurrencyInfo("CNY")`、`FormatCurrency(decimal amount, string currencyCode)`。带 `CultureInfo` 的重载里，货币符号与小数位数取自 `currencyCode`，数字分组与小数点排版取自 `culture`，两者互不干扰。
-- **`TimeZoneHelper`**：`GetTimeZone(id)`、`ConvertTime(...)`、`GetTimeZoneOffsetString`（如 `"+08:00"`）、`IsTimeZoneExists`。
+- **`TimeZoneHelper`**：`GetTimeZone(id)`、`TryGetTimeZone(id, out timeZone)`、`ConvertTime(...)`、`GetTimeZoneOffsetString`（如 `"+08:00"`）、`IsTimeZoneExists`。按标识取时区的三个方法接受 IANA ID（含 `Asia/Calcutta` 这类旧别名）与 Windows ID；Linux 的时区目录没有旧别名时，按同一个 Windows 时区落到已安装的时区，返回的 `Id` 可能与传入的不同。找不到时 `GetTimeZone` 抛 `TimeZoneNotFoundException`。
 - **`I18nFormatHelper`** / **`LanguageHelper`**：文化相关的日期/数字格式化与 `ResourceManager` 多语言字符串获取。
 
 ### 十二、数学 `Maths`
@@ -25593,7 +26215,7 @@ dotnet add package XiHan.Framework.Web.Api
 public class MyModule : XiHanModule { }
 ```
 
-模块声明 `[DependsOn(XiHanWebCoreModule, XiHanMultiTenancyModule, XiHanSerializationModule, XiHanAuditingModule)]`。`ConfigureServices` 里配置 `ForwardedHeadersOptions`（信任 `X-Forwarded-For/Proto/Host`）并调用 `AddXiHanWebApi` + `AddXiHanRateLimiting` + `AddXiHanCircuitBreaking`；`OnApplicationInitialization` 装配下述完整中间件管道。
+模块声明 `[DependsOn(XiHanWebCoreModule, XiHanMultiTenancyModule, XiHanSerializationModule, XiHanAuditingModule)]`。`ConfigureServices` 里按 `XiHan:Web:Api:ForwardedHeaders` 配置 `ForwardedHeadersOptions`（还原 `X-Forwarded-For/Proto/Host`，只采信受信代理带来的转发头）并调用 `AddXiHanWebApi` + `AddXiHanRateLimiting` + `AddXiHanCircuitBreaking`；`OnApplicationInitialization` 装配下述完整中间件管道。
 
 `AddXiHanWebApi(configuration)` 内部依次装配：
 
@@ -25609,7 +26231,7 @@ public class MyModule : XiHanModule { }
 
 | # | 中间件 | 作用一句话 |
 | --- | --- | --- |
-| 1 | `UseForwardedHeaders` | 依据 `X-Forwarded-Proto/Host/For` 还原真实 scheme/host/客户端 IP；必须最前，否则后续读 scheme/host/IP 的中间件全错。 |
+| 1 | `UseForwardedHeaders` | 请求来自受信代理时，依据 `X-Forwarded-Proto/Host/For` 还原真实 scheme/host/客户端 IP；必须最前，否则后续读 scheme/host/IP 的中间件全错。 |
 | 2 | `XiHanTraceIdMiddleware` | 取请求头 `X-Trace-Id`（无则用 `TraceIdentifier`），写入 `HttpContext.Items` 并回写响应头，贯穿全链路。 |
 | 3 | `UseXiHanRequestCulture` | 解析请求文化（`X-Language` 等）并设置到当前线程，使后续管线（含控制器/响应过滤器）在请求文化下执行。 |
 | 4 | `XiHanRequestContextMiddleware` | 汇聚 TraceId/文化/客户端 IP/UA/路径/方法/起始时间为 `RequestContext`，写入 `IRequestContextAccessor`；用户与租户此时尚未可知，由第 15 步定型写回。 |
@@ -25624,8 +26246,10 @@ public class MyModule : XiHanModule { }
 | 13 | `XiHanOpenApiSecurityMiddleware` | 对受保护路径做签名/内容签名/加密/防重放校验（默认关闭）。 |
 | 14 | `UseAuthentication` | JWT Bearer 认证，填充 `HttpContext.User`。 |
 | 15 | `XiHanTenantResolveMiddleware` | 按解析链解析租户并 `ICurrentTenant.Change`：已认证请求只以令牌为准；请求头、查询串、兜底租户给出的租户须在 `ITenantStore` 中存在且激活，否则以 400 拒绝。解析后把用户与租户定型写回 `RequestContext`。置于认证后（可用用户信息）、授权前（授权可依租户）。 |
-| 16 | `UseAuthorization` | 授权（可全局 `FallbackPolicy` 要求已认证用户）。 |
-| 17 | `UseEndpoints` | `MapControllers()`（含动态控制器，走特性路由）+ `MapOpenApi().AllowAnonymous()`。 |
+| 16 | `XiHanRequestAccessMiddleware` | 请求访问闸门：依次询问应用注册的 `IRequestAccessGate`（按 `Order` 从小到大），第一个拒绝即以统一信封短路（状态码与业务码取闸门给的，可带响应头如 `Retry-After`）。置于认证与租户解析之后（可按用户、角色、租户判定）、会话闸门与授权之前；匿名接口、Minimal API 与实时通道的协商请求同样经过。应用的访问策略、维护模式接在这里；没有注册闸门时直接放行。 |
+| 17 | `XiHanSessionStateMiddleware` | 会话闸门：按应用侧 `ISessionStateGate` 拦截已失效（401）与已锁定（423）的会话。 |
+| 18 | `UseAuthorization` | 授权（可全局 `FallbackPolicy` 要求已认证用户）。授权处理器带了失败原因的 403，由 `XiHanAuthorizationMiddlewareResultHandler` 写成统一响应信封（消息取第一条非空原因，如「权限不足」「当前条件下不允许此操作」，带 traceId）；没有失败原因的拒绝与 401 照旧。宿主自己注册了 `IAuthorizationMiddlewareResultHandler` 时不覆盖。 |
+| 19 | `UseEndpoints` | `MapControllers()`（含动态控制器，走特性路由）+ `MapOpenApi().AllowAnonymous()`。 |
 
 ## 工作原理：动态 API
 
@@ -25674,10 +26298,9 @@ public class MyModule : XiHanModule { }
 
 1. **显式绑定优先**：参数已标 `[FromRoute]`/`[FromQuery]`/`[FromBody]`/`[FromForm]`/`[FromHeader]`/`[FromServices]` 时直接采用，并保留其 `Name`。
 2. **基础设施类型 → `Services`**：`CancellationToken`/`HttpContext`/`ClaimsPrincipal`/`IServiceProvider` 等特殊类型自动注入，不计入客户端必填参数。
-3. **表单文件 → `Form`**：参数类型（含嵌套属性/集合）包含 `IFormFile`/`IFormFileCollection` 时判为表单来源，动作方法自动加 `[Consumes("multipart/form-data")]`，因此文件上传应用服务方法无需手写控制器即可工作。
-4. **Id 形参 → `Route`**：参数名为 `id` 或以 `Id`/`ID` 结尾、类型为常见标识类型（`long`/`int`/`Guid`/`string` 等）或自定义 Id 值对象（类型名以 `Id` 结尾或实现 `IParsable<TSelf>`）时：`GET`/`DELETE`/`HEAD` 直接拼入路由；`PUT`/`PATCH` 仅第一个此类参数拼入路由，其余降级为 `Query`。
-5. **唯一复杂类型 → `Body`**：非 `GET`/`DELETE`/`HEAD` 方法下，首个复杂类型（class/record）参数判为请求体；若已有一个 Body 参数，后续复杂类型参数降级为 `Query`（避免多 Body 冲突）。
-6. **兜底 → `Query`**：其余简单类型/集合类型参数走查询字符串。
+3. **表单文件 → `Form`**：参数类型（含嵌套属性/集合）包含 `IFormFile`/`IFormFileCollection` 时判为表单来源，动作方法自动加 `[Consumes("multipart/form-data")]`，因此文件上传应用服务方法无需手写控制器即可工作。`List<IFormFile>`、`IFormFile[]`、`IFormFileCollection` 与含文件列表的 DTO 都能在一次请求里接收多个文件。同一方法里其余未标注的复杂类型与集合参数随同一表单绑定；简单类型参数仍走查询字符串，要随表单提交时标 `[FromForm]`。显式 `[FromBody]` 与表单参数并存的方法在装配阶段报错，因为这种动作的请求必然返回 415。
+4. **唯一复杂类型或集合 → `Body`**：非 `GET`/`DELETE`/`HEAD` 方法下，首个复杂类型（class/record）或集合类型（`List<T>`/`T[]`/`IEnumerable<T>` 等，元素类型不限）参数判为请求体，与 ASP.NET Core `[ApiController]` 的推断一致；若已有一个 Body 参数，后续复杂类型与集合参数降级为 `Query`（避免多 Body 冲突）。集合要走查询字符串时显式标 `[FromQuery]`。
+5. **兜底 → `Query`**：其余简单类型参数，以及 `GET`/`DELETE`/`HEAD` 方法上的集合参数走查询字符串。参数名不参与推断，路由段只由显式 `[FromRoute]` 产生。
 
 同一 HTTP 方法 + 路由模板出现重复映射（多为重载方法未显式区分路由）时，控制器生成阶段直接抛 `DynamicApiException` 报冲突，而非放任运行期路由歧义。
 
@@ -25723,8 +26346,23 @@ public class MyModule : XiHanModule { }
 | `XiHanTenantResolveMiddleware` + `HeaderTenantResolveContributor` / `QueryStringTenantResolveContributor` | 多租户解析中间件与两个内置贡献者。 |
 | `XiHanOpenApiSecurityMiddleware` / `IOpenApiSecurityClientStore` / `OpenApiSecurityClient` | OpenAPI 安全中间件、客户端存储与客户端模型。 |
 | `XiHanCircuitBreakerState` | 熔断器状态（滑动窗口统计、Closed/Open/HalfOpen 状态机，多实例各自独立）。 |
+| `XiHanForwardedHeadersOptions` / `XiHanForwardedHeadersConfigurator` | 受信代理配置，以及把它落到 ASP.NET Core `ForwardedHeadersOptions` 的配置器（写错即启动失败）。 |
 
 ## 配置
+
+### 受信代理：`XiHan:Web:Api:ForwardedHeaders`（`XiHanForwardedHeadersOptions`）
+
+转发头只在请求来自受信代理时才被采信，其余来源带的 `X-Forwarded-For` 等一律忽略，客户端伪造不了自己的 IP。本机回环（`127.0.0.0/8`、`::1`）始终受信，这里配的是追加项。
+
+| 字段 | 类型 | 默认 | 含义 |
+| --- | --- | --- | --- |
+| `KnownProxies` | `List<string>` | `[]` | 受信代理的地址，如 `10.0.0.5`、`2001:db8::5`。 |
+| `KnownNetworks` | `List<string>` | `[]` | 受信代理所在网段（CIDR），如 `172.18.0.0/16`；主机位须为 0，单个地址写进 `KnownProxies`。 |
+| `ForwardLimit` | `int` | `1` | 最多从 `X-Forwarded-For` 右端剥几层受信代理；多级代理（CDN → 负载均衡 → nginx）按层数调大，且每一层都要配成受信。 |
+
+- 反向代理不在本机（另一台主机上的 nginx、容器网络里的网关、云负载均衡）时必须配置，否则日志、会话、限流、开放接口白名单看到的客户端 IP 都是代理的地址。
+- 地址、网段写错或 `ForwardLimit` 小于 1 时启动即失败（`InvalidOperationException`，消息里带配置键）。
+- 没有「信任任意来源」的开关：要信一整段地址就把网段写出来。
 
 ### CORS：`XiHan:Web:Api:Cors`（`XiHanCorsOptions`）
 
@@ -25825,6 +26463,9 @@ public class MyModule : XiHanModule { }
     },
     "Web": {
       "Api": {
+        "ForwardedHeaders": {
+          "KnownNetworks": ["172.18.0.0/16"]
+        },
         "Cors": {
           "AllowedOrigins": ["https://app.example.com"],
           "AllowCredentials": true
@@ -25911,7 +26552,7 @@ public class PingController : XiHanController
 - **覆盖日志落库**：以 `AddScoped` 覆盖 `IAccessLogWriter`/`IOperationLogWriter`/`IExceptionLogWriter`/`IApiLogWriter`/`ILoginLogWriter`（契约定义在 [Auditing](./auditing) 包，默认 `Null*` 由该包 `TryAddScoped` 注册，后注册的实现胜出）——这是把审计日志接入数据库的标准做法。
 - **自定义租户来源**：向 `XiHanTenantResolveOptions.TenantResolvers` 追加实现 `TenantResolveContributorBase` 的贡献者（默认已含 Header、QueryString）。
 - **OpenApi 安全客户端存储**：替换 `IOpenApiSecurityClientStore`（默认 `DefaultOpenApiSecurityClientStore` 读 `Options.Clients`），改为数据库/远程加载客户端凭据。
-- **反向代理拓扑**：默认 `ForwardedHeadersOptions` 仅信任本机回环代理；反代在其它主机时，应用侧追加 `KnownProxies`/`KnownNetworks`。
+- **反向代理拓扑**：缺省只信任本机回环代理；反代在其它主机时，在 `XiHan:Web:Api:ForwardedHeaders` 里追加 `KnownProxies`/`KnownNetworks`，多级代理同时调大 `ForwardLimit`（见上文配置）。
 
 ## 注意事项与最佳实践
 
@@ -25976,15 +26617,15 @@ dotnet add package XiHan.Framework.Web.Core
 public class MyModule : XiHanModule { }
 ```
 
-模块 `PreConfigureServices` 会把 `IWebHostEnvironment.EnvironmentName` 同步进 `IXiHanHostEnvironment`（当后者为空时）；`ConfigureServices` 调用 `AddXiHanWebCore(configuration)`，注册：`IApplicationBuilder` 的 `ObjectAccessor`、`IHttpContextAccessor`、`XiHanClientInfoOptions`（绑定配置节）、`IClientInfoProvider`（单例）、以及 `ICurrentPrincipalAccessor`（Scoped，实现为 `HttpContextCurrentPrincipalAccessor`）。
+模块 `PreConfigureServices` 会把 `IWebHostEnvironment.EnvironmentName` 同步进 `IXiHanHostEnvironment`（当后者为空时）；`ConfigureServices` 调用 `AddXiHanWebCore(configuration)`，注册：`IApplicationBuilder` 的 `ObjectAccessor`、`IHttpContextAccessor`、`XiHanClientInfoOptions`（绑定配置节）、`IIpRegionResolver`（单例，`TryAdd`）、`IClientInfoProvider`（单例）、以及 `ICurrentPrincipalAccessor`（Scoped，实现为 `HttpContextCurrentPrincipalAccessor`）。
 
 ## 核心能力
 
 - **托管环境接入**：模块前置阶段把 ASP.NET Core 环境名写入 `IXiHanHostEnvironment`。若 DI 中缺 `IWebHostEnvironment`，`GetHostingEnvironment()` 回退到 `EmptyHostingEnvironment`（默认 `Development`）。
 - **HttpContext 与当前主体**：注册 `IHttpContextAccessor`；`HttpContextCurrentPrincipalAccessor` 以 `HttpContext.User` 为当前主体（无请求时回退空 `ClaimsPrincipal`），从而让框架 `ICurrentUser` 在 Web 请求中生效。
 - **客户端信息识别**：`IClientInfoProvider.GetCurrent()` 从当前请求解析出 `ClientInfo`（IP / 归属地 / 原始 UA / 浏览器 / 系统 / 设备）。
-- **真实 IP 解析**：优先取 `X-Forwarded-For` 第一跳，其次 `X-Real-IP`，回退 `Connection.RemoteIpAddress`；对 IPv4-mapped-IPv6 做规范化（`MapToIPv4`）。
-- **IP 归属地定位**：回环 IP 记为「本机」、内网 IP 记为「局域网」；仅公网 IP 才触发 `ip2region`（`IP2Region.Net`）离线查询。数据库文件按候选路径自动探测，缺库时静默跳过、不报错。
+- **客户端 IP**：只取 `Connection.RemoteIpAddress`，对 IPv4-mapped-IPv6 做规范化（`MapToIPv4`）；不直接读 `X-Forwarded-For`、`X-Real-IP` 等请求头（客户端能任意伪造）。部署在反向代理后面时，由 Web.Api 的转发头中间件按受信代理还原这个地址。
+- **IP 归属地定位**：回环 IP 记为「本机」、内网 IP 记为「局域网」；仅公网 IP 才经 `IIpRegionResolver` 查 `ip2region`（`IP2Region.Net`）离线库。IPv4、IPv6 各用一个 xdb，首次用到时整库载入内存；库文件按候选路径自动探测，缺库时该地址族静默跳过、不报错。登录地址与应用的访问策略（地区条件）共用这一份库。
 - **UA 解析**：基于 `UAParser` 解析 User-Agent 得到浏览器 / 系统 / 设备名；桌面浏览器 `Device.Family` 常为 `Other`，会归一化为 `PC`。
 - **Claims 转换（可选）**：`XiHanClaimsTransformation` 支持把标准 OIDC 声明（`sub`/`role`/`email`/`name` 等）映射为框架 `XiHanClaimTypes`；通过 `services.TransformXiHanClaims()` 显式注册后才生效。
 
@@ -25994,7 +26635,9 @@ public class MyModule : XiHanModule { }
 | --- | --- |
 | `IClientInfoProvider` | 客户端信息提供器契约。唯一方法 `ClientInfo GetCurrent()`。 |
 | `ClientInfo` | 结果模型：`IpAddress` / `Location` / `UserAgent` / `Browser` / `OperatingSystem` / `DeviceName`（均可空）。 |
-| `HttpContextClientInfoProvider` | 默认实现（单例，`IDisposable`）：真实 IP 解析 + ip2region 归属地 + UAParser 解析。IP 查询器懒加载并加锁复用。 |
+| `HttpContextClientInfoProvider` | 默认实现（单例）：真实 IP 解析 + 归属地（交给 `IIpRegionResolver`）+ UAParser 解析。 |
+| `IIpRegionResolver` / `Ip2RegionResolver` | IP 归属地解析：`IpRegion? Resolve(IPAddress)`；默认实现单例、线程安全、`IDisposable`，IPv4 与 IPv6 各懒加载一个 xdb。回环、内网、未启用、缺库、查不到时返回空。 |
+| `IpRegion` | 归属地：`Country` / `Province` / `City` / `Isp` / `CountryCode`，`Location` 为去掉未知段后的展示文本；`TryParse` 兼容新版「国家|省份|城市|运营商|国家代码」与旧版「国家|区域|省份|城市|运营商」。港澳台的国家是「中国」，省份是「香港特别行政区」「澳门特别行政区」「台湾省」。 |
 | `XiHanClientInfoOptions` | 客户端信息配置（配置节 `XiHan:Web:Core:ClientInfo`）。 |
 | `HttpContextCurrentPrincipalAccessor` | 继承 `CurrentPrincipalAccessorBase`，以 `HttpContext.User` 作为当前主体，桥接框架 `ICurrentUser`。 |
 | `XiHanClaimsTransformation` | `IClaimsTransformation` 实现，按映射表补加声明标识。 |
@@ -26022,9 +26665,10 @@ public class MyModule : XiHanModule { }
 | 字段 | 类型 | 默认值 | 含义 |
 | --- | --- | --- | --- |
 | `EnableIpRegion` | `bool` | `true` | 是否对公网 IP 启用 ip2region 归属地解析。 |
-| `Ip2RegionDbPath` | `string?` | `IpDatabases/ip2region.xdb` | ip2region xdb 文件路径，支持相对路径（相对 `ContentRootPath`）。 |
+| `Ip2RegionDbPath` | `string?` | `IpDatabases/ip2region.xdb` | IPv4 的 ip2region xdb 文件路径，支持相对路径（相对 `ContentRootPath`）。 |
+| `Ip2RegionV6DbPath` | `string?` | `IpDatabases/ip2region_v6.xdb` | IPv6 的 ip2region xdb 文件路径；文件不存在时 IPv6 地址不解析归属地。 |
 
-数据库候选路径顺序：配置的 `Ip2RegionDbPath` → `IpDatabases/ip2region.xdb` → `ip2region.xdb`；逐个探测存在的文件，都不存在时静默跳过归属地解析。
+数据库候选路径顺序：IPv4 为配置的 `Ip2RegionDbPath` → `IpDatabases/ip2region.xdb` → `IpDatabases/ip2region_v4.xdb` → `ip2region.xdb`；IPv6 为配置的 `Ip2RegionV6DbPath` → `IpDatabases/ip2region_v6.xdb`。逐个探测存在的文件，都不存在时静默跳过该地址族的归属地解析。
 
 示例 `appsettings.json`：
 
@@ -26035,7 +26679,8 @@ public class MyModule : XiHanModule { }
       "Core": {
         "ClientInfo": {
           "EnableIpRegion": true,
-          "Ip2RegionDbPath": "IpDatabases/ip2region.xdb"
+          "Ip2RegionDbPath": "IpDatabases/ip2region.xdb",
+          "Ip2RegionV6DbPath": "IpDatabases/ip2region_v6.xdb"
         }
       }
     }
@@ -26081,7 +26726,7 @@ public override void ConfigureServices(ServiceConfigurationContext context)
 ## 注意事项与最佳实践
 
 - **归属地依赖离线库**：`ip2region.xdb` 需随应用部署（默认放 `IpDatabases/`）。缺库不会报错，但 `ClientInfo.Location` 对公网 IP 为 `null`。
-- **真实 IP 依赖转发头还原**：X-Forwarded-For 由上层 Web.Api 的 `UseForwardedHeaders` 在管线最前还原；反向代理需正确透传该头，否则解析到的是反代地址。
+- **真实 IP 依赖受信代理配置**：`X-Forwarded-For` 由上层 Web.Api 的 `UseForwardedHeaders` 在管线最前还原，且只采信受信代理（缺省本机回环，其余在 `XiHan:Web:Api:ForwardedHeaders` 配置）；反代不在本机又没配置时，解析到的是反代地址。
 - **`ICurrentUser` 生效前提**：本包只桥接 `HttpContext.User`；用户主体的真实内容由认证中间件（JWT）填充，须在 Web.Api 中启用认证。
 - **声明转换不默认启用**：`XiHanClaimsTransformation` 只有显式调用 `TransformXiHanClaims()` 才注册；未调用时不做任何声明映射。
 

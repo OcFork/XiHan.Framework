@@ -4,6 +4,53 @@
 
 本文件记录 XiHan.Framework 各版本的变更。每条标注 **新增 / 修复 / 优化 / 调整 / 升级 / 移除** 类别。只收录使用者可感知的变更，仓库自身的配置、CI、测试工程与构建脚本不列入。框架以 NuGet 包形式发布，升级前请留意「调整」类中的破坏性变更。
 
+## v4.8.0 (2026-10-23)
+
+::: warning 升级须知
+- 客户端 IP 只取转发头中间件按受信代理还原后的连接地址，不再直接读 `X-Forwarded-For`、`X-Real-IP`。反向代理不在本机（另一台主机上的 nginx、容器网络里的网关、云负载均衡）的部署，须在新配置节 `XiHan:Web:Api:ForwardedHeaders` 里配置代理地址 `KnownProxies` 或网段 `KnownNetworks`，多级代理同时调大 `ForwardLimit`，否则日志、会话与限流看到的客户端 IP 都是代理的地址；地址或网段写错、网段主机位不为 0、`ForwardLimit` 小于 1 时启动失败。同机经本机回环转发的不用改
+- `HttpContextClientInfoProvider` 改为注入 `IIpRegionResolver`，不再实现 `IDisposable`；直接 `new` 它的代码改传 `IHttpContextAccessor` 与 `IIpRegionResolver`，经 `AddXiHanWebCore` 注册的不受影响
+:::
+
+- **新增** 可配置条件的求值器（`XiHan.Framework.Authorization` 的 Conditions）：属性先登记值种类（字符串、数字、布尔、日期时间、日期、时刻、IP）、是否多值与旧名别名，可登记以 `.*` 结尾的一族属性；条件按组内且、组间或编译求值，集合、区间、跨零点的时刻区间与 IP 网段都能写；取不到值的子句按不命中计、取反也不翻转，模型绑定后才能补的属性记为待定；要说明时给出每组每个子句的取值与原因。登记项经 `AddXiHanConditionAttributes` 追加，`ConditionOperatorRules` 公开运算符与值种类的搭配规则，编辑界面可只列出能用的运算符
+- **新增** `IPermissionChecker.CheckAsync(PermissionCheckContext)`：判定带上用户、权限码、主体与当前请求，结果区分授予、没有授予与条件不满足；缺省实现转调 `IsGrantedAsync`，现有检查器不用改。`HybridPermissionAuthorizationHandler` 改调它，拒绝时附带失败原因
+- **新增** 请求访问闸门 `IRequestAccessGate`：在租户解析之后、会话闸门与授权之前按请求放行或拒绝，匿名接口、Minimal API 与实时通道的协商请求同样经过；拒绝写统一响应信封，可带附加响应头（如 `Retry-After`）。没有注册闸门时直接放行
+- **新增** `IIpRegionResolver` 与默认实现 `Ip2RegionResolver`：IPv4 与 IPv6 各用一个离线库，进程内只载入一次；`IpRegion` 给出国家、省份、城市、运营商与国家代码。`XiHanClientInfoOptions` 新增 `Ip2RegionV6DbPath`（缺省 `IpDatabases/ip2region_v6.xdb`）
+- **新增** 受信代理配置 `XiHan:Web:Api:ForwardedHeaders`（`XiHanForwardedHeadersOptions`）：本机回环始终受信，配置项是追加，见升级须知
+- **调整** 授权被拒且授权处理器给了失败原因时，403 改写统一响应信封，消息取第一条原因（如「权限不足」「当前条件下不允许此操作」）并带 traceId；没有失败原因的拒绝与 401 照旧，宿主已注册自己的 `IAuthorizationMiddlewareResultHandler` 时不覆盖
+- **修复** 客户端带上 `X-Forwarded-For` 或 `X-Real-IP` 请求头就能伪造登录日志、会话与访问日志里的 IP 和归属地
+- **修复** IPv6 地址的归属地一直为空：之前只加载一个离线库
+- **修复** `X-Timezone` 与 `TimeZoneHelper` 不认旧 IANA 别名（如 `Asia/Calcutta`、`Europe/Kiev`）与 Windows 时区 ID：新版 tzdata 去掉别名后，`DateTime` 字段按 UTC 墙钟输出且不带偏移，前端显示差一个时区。现按同一时区换算，仍解析不了时按 UTC 输出带 `+00:00` 的 ISO 8601；新增 `TimeZoneHelper.TryGetTimeZone`
+- **优化** 文档站生态导航补「设计器」一组，版本下拉加 NuGet 入口，加公告横幅，文档主题升至 1.2.1
+- **升级** ModelContextProtocol 升至 2.3.0、OpenTelemetry 升至 1.20.1、Scalar.AspNetCore 升至 2.18.2、Swashbuckle.AspNetCore 升至 10.3.1、Scriban 升至 7.5.1，发布 v4.8.0
+
+## v4.7.1 (2026-10-21)
+
+::: warning 升级须知
+- 动态 API 在 `POST`/`PUT`/`PATCH` 方法上未显式标注的集合参数改为请求体绑定，与文件同处的改为表单绑定；原先通过查询字符串传集合（如 `?ids=1&ids=2`）的接口需给参数加 `[FromQuery]`
+- 动态 API 方法同时有显式 `[FromBody]` 参数与表单文件参数时启动报错；去掉 `[FromBody]` 即随表单提交
+- `IFileStorageProvider` 新增 `UploadManyAsync` 与 `DeleteManyAsync`；继承 `FileStorageProviderBase` 的 Provider 自动获得默认实现，直接实现接口的 Provider 需补齐这两个方法
+:::
+
+- **新增** `IFileStorageProvider.UploadManyAsync` / `DeleteManyAsync`：一次处理多个文件。批量上传结果与请求顺序一一对应，单个失败不影响其余文件；批量删除尝试全部路径后汇总抛出失败项
+- **修复** 动态 API 的 `List<T>`/`T[]`/`IEnumerable<T>` 参数在 `POST`/`PUT`/`PATCH` 上被推断为查询字符串，JSON 数组请求体到达服务方法时为空集合；显式标注 `[FromBody]` 的集合参数在装配时报「不能使用 FromBody」
+- **修复** 动态 API 上传方法在文件参数之外另带 DTO 参数时，DTO 被推断为请求体，请求一律返回 415；现随同一表单绑定
+- **升级** 发布 v4.7.1
+
+## v4.7.0 (2026-10-15)
+
+::: warning 升级须知
+- 人工任务同时配置 `Assignees` 与 `AssigneesExpression` 时改为合并去重，此前只取 `Assignees`
+- `WorkflowInstance` 新增 `Outcome`，自行持久化工作流实例的存储需一并保存该字段
+:::
+
+- **新增** 工作流人工任务受理人规则 `AssigneeRules`（`{ type, values }`）与 `IWorkflowAssigneeProvider` 注册表：内置 `User` / `Starter` / `Expression`，角色、部门、上级主管等由应用注册解析器；新增 `ExcludeStarter`（跳过发起人）、`EmptyAssigneeStrategy`（找不到受理人时报错 / 自动通过 / 自动驳回 / 转交兜底受理人）、`FallbackAssigneeRules` 与 `CcRules`
+- **新增** 结束节点可声明 `Outcome`：执行时同步调用 `IWorkflowOutcomeHandler` 回写业务并立即结束整个实例，结果写入 `WorkflowInstance.Outcome`；回调失败时实例进入故障态，重试时再次回调。构建器新增 `WithAssigneeRule`、`AddOutcomeEnd`
+- **新增** 故障实例可直接取消或终止，不必先重试成功
+- **新增** `XiHan.Framework.Cli`（.NET 工具，命令 `xihan-framework`）：包、模块、配置节与文档的离线知识库，提供 `list` / `info` / `doc` / `config` / `search` / `changelog` 命令与 stdio MCP 服务端；`setup` 为 Claude Code、Cursor、VS Code 写入钉住版本的 MCP 配置与使用技能
+- **新增** 文档站新增「AI 辅助开发」一册：For Agents、MCP Server、CLI、LLMs.txt
+- **修复** 传递依赖 `System.Security.Cryptography.Pkcs` 的高危漏洞 CVE-2026-84008 与中危漏洞 CVE-2026-70162：`XiHan.Framework.Data`（经 SqlSugarCore → Oracle.ManagedDataAccess.Core）与 `XiHan.Framework.Bot.Email`（经 MailKit → MimeKit）钉到 10.0.13
+- **升级** .NET 运行库随 10.0.13 补丁更新，Microsoft.Extensions.AI 升至 10.11.0、Microsoft Agent Framework 升至 1.25.0，发布 v4.7.0
+
 ## v4.6.2 (2026-10-13)
 
 - **升级** 升级依赖，发布 v4.6.2
