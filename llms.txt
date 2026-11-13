@@ -1,0 +1,244 @@
+# 曦寒开发框架
+
+> XiHan Framework 是一套语言中立的应用框架规范（XiHan Spec）及其 .NET 10 参考实现：原语层与微内核之上，子系统以抽象包、零外部依赖的默认实现与可替换的 Provider 组成；特性在清单里按能力 ID 声明依赖，内核求解能力图谱后显式装配；每次调用经过固定十一个阶段的管道；一份操作契约同时经 HTTP、gRPC、MCP 与命令行暴露。
+
+本文件由文档站构建期生成，内容与仓库文档同源。
+
+## 机读资产
+
+- [llms-full.txt](https://framework.docs.xihanfun.com/llms-full.txt): 全部 163 页正文
+- [llms-guide.txt](https://framework.docs.xihanfun.com/llms-guide.txt): 90 页教程
+- [llms-packages.txt](https://framework.docs.xihanfun.com/llms-packages.txt): 71 页包参考
+- 每页 Markdown：把站点地址后缀成 `.md`，如 https://framework.docs.xihanfun.com/agents/agents.md
+
+## 首页与更新日志
+
+- [更新日志 · XiHan Framework](https://framework.docs.xihanfun.com/changelog): 本页记录 XiHan Framework 各版本中使用者可感知的变更，每条标注 新增 / 修复 / 优化 / 调整 / 移除 类别；仓库自身的 CI、测试工程与构建脚本不列入。
+- [曦寒开发框架](https://framework.docs.xihanfun.com/): 语言中立的应用框架规范与 .NET 参考实现
+
+## 附录
+
+- [贡献指南](https://framework.docs.xihanfun.com/appendix/contributing): 这一页写给想为 XiHan Framework 贡献代码、文档、示例或一致性向量的读者：从哪里开始、改动要走什么流程、代码要符合哪些规范、提交前要过哪些门禁。
+- [常见问题](https://framework.docs.xihanfun.com/appendix/faq): 本页收集使用框架时最常遇到的问题与排查方法，按装配、操作与协议、数据与安全、版本与能力范围分组。
+- [介绍](https://framework.docs.xihanfun.com/appendix/introduction): 让 .NET 应用的边界清楚十年。
+- [发展大事记](https://framework.docs.xihanfun.com/appendix/milestones): 这一页按时间讲 XiHan Framework 是怎么走到今天的：从一个给自己项目用的基础库，到四个大版本的全家桶式框架，再到 2026 年秋天推倒重来的 5.0。
+- [设计哲学](https://framework.docs.xihanfun.com/appendix/philosophy): 这一页讲 XiHan Framework 5 背后的想法：我为什么把框架分成三层承诺，七条原则怎样推出具体的设计决策，从操作系统、语言、云原生项目和诸子百家里借了什么、又把它们落成了什么规则。
+- [框架定位](https://framework.docs.xihanfun.com/appendix/positioning): 这一页回答一个问题：XiHan Framework 到底是什么，适合谁，又明确不做什么。
+- [路线图](https://framework.docs.xihanfun.com/appendix/roadmap): XiHan Framework 5 的路线图按门槛推进，不按日期。
+- [示例说明](https://framework.docs.xihanfun.com/appendix/samples): 框架仓库的 `framework/samples/` 目录下有八个示例。
+- [规范与多语言](https://framework.docs.xihanfun.com/appendix/spec): XiHan Framework 的本体不是 .NET 代码，而是一份语言中立的规范：XiHan Spec。
+- [支持曦寒](https://framework.docs.xihanfun.com/appendix/support): XiHan Framework 与整个曦寒懿生态自发布以来一直采用 MIT 协议：核心能力永久免费，个人与企业都可以使用和商用，开源版本完整可用、不做削弱，已经以 MIT 公开的能力不会再改成收费。
+- [为什么是曦寒](https://framework.docs.xihanfun.com/appendix/why): .NET 上不缺应用框架。
+
+## 入门指南
+
+- [核心概念](https://framework.docs.xihanfun.com/getting-started/concepts): 这一页把框架的核心概念一次讲清：特性与清单、能力图谱、执行管道、操作契约、默认实现与 Provider、结果与错误、环层与命名。
+- [第一个应用](https://framework.docs.xihanfun.com/getting-started/first-app): 这一页从一个空的 ASP.NET Core 项目开始，写一个操作契约并经 HTTP 调用它，再换成 Standard 组合观察能力图谱与管道。
+- [环境与安装](https://framework.docs.xihanfun.com/getting-started/installation): 这一页说明使用 XiHan Framework 需要什么环境，以及三种取得框架包的方式。
+- [组合包与选包](https://framework.docs.xihanfun.com/getting-started/profiles): 框架有六十多个包。
+- [项目结构建议](https://framework.docs.xihanfun.com/getting-started/project-structure): 这一页给出一个中等规模应用的解决方案布局建议：宿主、能力包、共享契约各放哪里，一个能力包内部怎样组织目录，本地化文件与序列化上下文放在哪。
+
+## 应用启动
+
+- [装配入口](https://framework.docs.xihanfun.com/startup/bootstrap): 这一页讲 XiHan 应用是怎样被「装起来」的：`AddXiHan` 在两种宿主构建器上的写法、回调里拿到的 `AppBuilder` 能做什么、装配完成后容器里的 `App` 对象提供哪些信息、启动时打印的 Banner 怎样关闭，以及启动日志里那两段文本（能力图谱与管道）该怎么读。
+- [能力图谱与 Provider](https://framework.docs.xihanfun.com/startup/capabilities): 这一页讲内核怎样把一堆清单变成一张图：能力 ID 与接口版本的文法、求解的六个步骤、可选依赖缺失时的 `Degraded`、同一能力有多个候选时怎样选出 Provider，以及求解失败时的五个错误码。
+- [依赖注入](https://framework.docs.xihanfun.com/startup/dependency-injection): 这一页讲框架怎样使用 .NET 原生的依赖注入：服务在哪两个位置注册、框架自己登记的类型是什么生命周期、每次调用对应的服务作用域从哪里来，以及在调用之外运行的代码怎样取得作用域服务。
+- [特性与清单](https://framework.docs.xihanfun.com/startup/features): 这一页讲框架装配的最小单元：特性（`IFeature`）与它随身携带的清单（`Manifest`）。
+- [调用上下文](https://framework.docs.xihanfun.com/startup/invocation-context): 这一页讲贯穿一次调用的那个对象：`InvocationContext` 自带的成员、Baggage 与五个已登记的键、内核与安全子系统附加在它上面的信息（安全上下文、结果、调用来源、类型化条目）、各协议怎样从请求构造它、以及 Baggage 跨进程传播时落在哪些载体上。
+- [生命周期与健康](https://framework.docs.xihanfun.com/startup/lifecycle): 这一页讲特性与应用从声明到停止经过的九个状态、启动与停止的顺序和超时、特性启动失败时的两种策略、要等容器建好才能做的启动核对，以及把运行期健康上报给探针的 `IHealthContributor`。
+- [执行管道](https://framework.docs.xihanfun.com/startup/pipeline): 这一页讲每次调用经过的十一个固定阶段、各阶段由谁提供中间件、中间件的写法与登记方式、同一阶段内的排序规则、应用构建之后成组改动管道的办法，以及怎样打印最终顺序。
+
+## 配置与选项
+
+- [资源绑定](https://framework.docs.xihanfun.com/configuration/bindings): 这一页讲特性怎样拿到数据库、Redis、消息代理这类外部资源的连接信息：在清单里声明一个绑定，由宿主在装配时从 Service Binding 目录或配置节解析出来，特性用名字取用。
+- [配置目录与热更新](https://framework.docs.xihanfun.com/configuration/config-directory): 这一页讲宿主怎样装载一个挂载的配置目录：环境变量 `XIHAN_CONFIG_PATH` 指向哪里、目录里的文件按什么顺序装载、它们与 appsettings 和环境变量谁覆盖谁、文件改了之后哪些值会跟着变，以及容器里为什么要开轮询式文件监视。
+- [配置模型与选项](https://framework.docs.xihanfun.com/configuration/options): 这一页讲应用与框架怎样读配置：框架沿用哪套配置模型、`XiHan:<领域>` 配置节怎样命名、应用自己的选项怎样绑定与校验、哪些值能在运行中更新。
+- [远程配置与密钥](https://framework.docs.xihanfun.com/configuration/remote): 这一页讲把配置中心与密钥库接进 `IConfiguration` 的两个契约：`IRemoteConfigurationClient` 与 `ISecretStore`，以及对应的配置源 `AddXiHanRemoteConfiguration` / `AddXiHanSecrets`、框架自带的 Nacos Provider、加载失败时的行为与错误码、凭据怎样避免进入日志。
+
+## Web 应用开发
+
+- [端点里使用框架](https://framework.docs.xihanfun.com/web/endpoints): 这页讲不是操作契约的普通最小 API 端点怎样使用框架：它们在 `UseXiHan()` 之后处于管道的 Handle 阶段内，可以读调用上下文里的主体与租户、把失败结果交给宿主写成 Problem Details、挂上由 Authorize 阶段判定的授权要求，也可以选择绕过管道并改用 ASP.NET Core 认证方案 `XiHan`。
+- [结果与错误处理](https://framework.docs.xihanfun.com/web/errors): 这一章讲框架怎样表达成功与失败：什么时候抛异常、什么时候返回 `Result`，错误码的文法与种类，`Error` 为什么只携带消息键而不是文案，以及宿主怎样把同一个错误翻译成 HTTP 状态、gRPC 状态与命令行退出码。
+- [ASP.NET Core 宿主](https://framework.docs.xihanfun.com/web/hosting): 这页讲 `Hosting.AspNetCore` 怎样把一个 ASP.NET Core 应用变成 XiHan 应用：在 `WebApplicationBuilder` 上装配特性，把每个 HTTP 请求翻译成调用上下文并送进内核管道，映射探针，把失败写成 Problem Details，按 `Accept-Language` 协商区域，以及 Native AOT 发布要做的两件事。
+- [规范化接口文档（OpenAPI）](https://framework.docs.xihanfun.com/web/openapi): 这页讲怎样从操作契约发布 OpenAPI 文档：`MapXiHanOpenApi()` 从哪些输入生成文档、文档里的权限与认证方案怎样表达、面向人的文案从哪里来、怎样把一个大应用的文档拆成几组、普通端点怎样进文档、怎样接 Scalar 或 Swagger UI 这类查看器，以及不启动 HTTP 服务怎样导出同一份文档。
+- [操作契约](https://framework.docs.xihanfun.com/web/operations): 这页讲框架对外暴露业务的方式：用 `[Operation]` 与 `IOperation<TRequest, TResponse>` 把一个业务动作声明成操作，由源生成器产出登记代码与 JSON Schema，再由协议适配器把同一份契约发布到 HTTP、gRPC、MCP 与命令行。
+- [实时通信](https://framework.docs.xihanfun.com/web/realtime): 这页讲怎样在 XiHan 应用里做实时推送：直接使用 ASP.NET Core SignalR，Hub 的认证交给内核已装配的认证处理器，Hub 方法里照常调用操作，多实例部署时用消息子系统把事件送到持有连接的实例。
+- [HTTP 路由与载荷](https://framework.docs.xihanfun.com/web/routing): 这页讲 HTTP 协议适配器 `Protocols.Http` 怎样把操作契约发布成 REST 端点：路由由操作 ID 与请求形状推导、怎样覆盖与加前缀、一次请求的载荷从路由值、请求体与查询串怎样合并、成功与失败各写什么状态码。
+- [数据校验](https://framework.docs.xihanfun.com/web/validation): 这一章讲 Validate 阶段怎样校验操作的请求：先按编译期生成的 JSON Schema 校验载荷，再对实现 `IValidatableObject` 的请求执行自校验，失败时以字段级错误返回。
+
+## 数据库操作指南
+
+- [连接与运行时数据源](https://framework.docs.xihanfun.com/persistence/connections): 这一页讲持久化的「连到哪个库」：默认连接怎样经绑定 `db` 配置、命名连接给谁用、运行时按应用自己的记录连外部库的 `DataSourceRegistry`、读库结构的 `ISchemaReader` 与实体目录 `IEntityCatalog`。
+- [领域模型](https://framework.docs.xihanfun.com/persistence/domain): 这一页讲怎样用 `XiHan.Framework.Domain` 定义实体与聚合：实体协议接口、值对象、领域事件缓冲与规约。
+- [EF Core Provider](https://framework.docs.xihanfun.com/persistence/entity-framework-core): 这一页讲 `XiHan.Framework.Persistence.EntityFrameworkCore`：怎样让应用自己的 `DbContext` 接入框架的仓储与工作单元、`ApplyPersistenceConventions` 与生成的 `ApplyGeneratedEntities` 各做什么、事务为什么在首次写入时才开、命名连接怎样声明、SQLite 上有哪些要注意的地方。
+- [标识生成](https://framework.docs.xihanfun.com/persistence/identifiers): 这一页讲实体主键怎样在应用侧生成：标识生成端口 `IIdGenerator<TKey>`、每个 Provider 缺省注册的 UUID v7 生成器，以及可选的雪花 `long` 标识（位布局、机器位分配、时钟回拨、错误码与解析）。
+- [持久化与 Provider](https://framework.docs.xihanfun.com/persistence/overview): 这一页讲持久化子系统的骨架：仓储与工作单元是什么、能力 `persistence.relational` 由谁提供、内存、EF Core、SqlSugar 三个 Provider 怎么选怎么启用、实体怎样登记、配置节与错误码一览。
+- [仓储读写](https://framework.docs.xihanfun.com/persistence/repositories): 这一页讲 `IRepository<TEntity, TKey>` 的每个方法：怎样查找与查询、怎样分页、新增更新删除各写哪些字段、批量方法的逐项结果与部分失败语义，以及软删除与租户过滤是怎样施加的。
+- [建表约定与索引](https://framework.docs.xihanfun.com/persistence/schema): 这一页讲实体怎样映射成表：主键、并发戳、时间列、可空列与字符串长度的约定，`[EntityIndex]` 怎样声明索引、索引名怎样推出、软删除实体的唯一索引为什么是部分唯一索引，以及三个 Provider 各自怎样建表。
+- [SqlSugar Provider](https://framework.docs.xihanfun.com/persistence/sqlsugar): 这一页讲 `XiHan.Framework.Persistence.SqlSugar`：两种创建客户端的方式、`SqlSugarConventions.Apply` 施加了哪些约定、`InitTables` 建表、多库落点与命名连接、按时间分表、读写分离、差异日志、命令超时，以及可空值类型判空与 PostgreSQL 的两个注意事项。
+- [工作单元与事务](https://framework.docs.xihanfun.com/persistence/unit-of-work): 这一页讲 `IUnitOfWork`：它的状态与成员、Transaction 阶段怎样为每次调用开启、提交与回滚、数据库事务为什么延迟到第一次写入、领域事件在提交前怎样派发，以及在管道之外自己开工作单元的写法。
+
+## SaaS 多租户
+
+- [数据库租户目录](https://framework.docs.xihanfun.com/multi-tenancy/database): 这一页讲 `MultiTenancy.Database`：把租户目录从配置搬进数据库，租户作为实体经仓储读写，管理操作在运行时增删租户，多个实例共享同一份目录。
+- [租户解析与隔离](https://framework.docs.xihanfun.com/multi-tenancy/resolution): 这一页讲框架怎样在一次调用里确定租户、租户信息存在哪里、怎样启用多租户，以及租户确定之后持久化层怎样把数据隔开。
+- [租户分片与分库](https://framework.docs.xihanfun.com/multi-tenancy/sharding): 这一页讲怎样把每个租户的数据落到租户自己的数据库：分片契约 `ITenantShardResolver` 与 `TenantShard`，缺省实现怎样从租户属性推出分片，持久化 Provider 怎样按分片选连接，以及不经管道的代码怎样用 `TenantShardScope` 显式绑定分片。
+
+## 安全鉴权
+
+- [认证](https://framework.docs.xihanfun.com/security/authentication): 这一页讲调用凭据怎样变成主体：凭据与认证处理器、Authenticate 阶段的处理顺序、怎样在代码里读主体、三种认证 Provider（ApiKey、JWT、OpenID Connect）怎样选和配，以及认证失败时协议上怎样质询。
+- [授权与权限](https://framework.docs.xihanfun.com/security/authorization): 这一页讲一次调用怎样被判定能否执行：权限的定义与登记、操作契约与端点上怎样声明授权要求、Authorize 阶段的处理顺序、启动时怎样核对策略引用、怎样写自定义策略与资源名。
+- [RBAC 授予与条件](https://framework.docs.xihanfun.com/security/grants): 这一页讲权限怎样落到主体身上：授予 `PermissionGrant` 与检查器的判定顺序、内存与数据库两种授予存储、用 `IPermissionFilter` 收窄与用 `IPermissionGrantSource` 扩展授予，以及与存储无关的条件引擎。
+- [IP 归属地](https://framework.docs.xihanfun.com/security/ip-region): 这一页讲怎样把调用方的 IP 地址解析成国家、省份、城市与运营商：契约 `IIpRegionResolver` 与结果 `IpRegion`，离线库 Provider `Security.Ip2Region` 的装配与 xdb 文件配置，怎样在操作里拿到调用来源的远端地址去解析，以及它与条件引擎的配合。
+- [出站地址策略](https://framework.docs.xihanfun.com/security/outbound): 这一页讲框架怎样防服务端请求伪造（SSRF）：向用户给的地址发请求时，缺省只能连公网地址，回环、私网、链路本地这些地址都要在配置里放行。
+- [通行密钥](https://framework.docs.xihanfun.com/security/webauthn): 这一页讲怎样让用户用通行密钥（WebAuthn）登录：依赖方要做的两次仪式、框架替你做的核对、应用要自己保存的状态，以及浏览器侧的写法。
+
+## 分布式缓存
+
+- [缓存读写](https://framework.docs.xihanfun.com/caching/basics): 这一页讲缓存子系统最常用的部分：它提供哪两个能力、字节存储与类型化缓存是什么关系、怎样启用内存与 Redis 实现、怎样读写、设置过期、批量操作、挑选序列化器，以及对应的配置、健康项与错误码。
+- [两级缓存与键管理](https://framework.docs.xihanfun.com/caching/hybrid): 这一页讲三件进阶的事：`Caching.Hybrid` 把进程内缓存与共享缓存叠成两级、读少一次网络往返；`ICacheStoreInspector` / `ICacheInspector` / `ICacheChangeFeed` 给管理界面列键、看元数据、按前缀删除与订阅变更；`Caching.Remote` 让任意语言写的进程外插件承担共享缓存。
+- [分布式锁与幂等](https://framework.docs.xihanfun.com/caching/locks): 这一页讲建立在共享缓存存储之上的两样东西：`IDistributedLock` 租约锁，以及按幂等键给调用去重、回放首次结果的 Idempotency 阶段；最后说明怎样让沿用 .NET `IDistributedCache` 的代码接到同一个存储上。
+
+## 消息与事件
+
+- [领域事件与发件箱](https://framework.docs.xihanfun.com/messaging/domain-events): 这一页讲聚合里记录的领域事件怎样变成消息：事件缓冲在聚合里、用 `AddDomainEvent` 登记映射、Transaction 阶段在提交前派发；再讲事务性发件箱 `OutboxFeature` 怎样让「写业务数据」与「发消息」落进同一个事务。
+- [发布与订阅](https://framework.docs.xihanfun.com/messaging/pubsub): 这一页讲消息子系统的基本用法：它提供哪些能力与 Provider、消息的 CloudEvents 信封长什么样、怎样用 `IMessagePublisher` 发布、怎样写 `IMessageHandler` 并订阅主题、消息怎样经管道派发、竞争与广播两种订阅方式有什么区别，以及重试、死信、配置、健康项与错误码。
+- [队列与流](https://framework.docs.xihanfun.com/messaging/streams): 这一页讲消息子系统的两个能力 `messaging.queue` 与 `messaging.stream` 到底差在哪里，以及三个生产级 Provider 的行为：RabbitMQ 的持久队列、手动确认、订阅方声明队列、广播队列与死信队列；Kafka 的幂等生产者、消费组位点、分区键有序、按时刻重放、预建主题与死信主题；Redis 的流与消费组、原位重试、超时回收、死信流与长度上限。
+
+## 多协议暴露
+
+- [CloudEvents](https://framework.docs.xihanfun.com/protocols/cloudevents): 这一页讲 CloudEvents 适配器：入站端点怎样把 HTTP 上的事件（structured、batch、binary 三种内容模式）变成消息信封交给消息子系统，事件类型怎样映射到主题，Dispatch 与 Publish 两种模式的区别，为什么入站端点必须由宿主自己加权限要求；再讲出站 Webhook 发布者怎样把信封推给别的服务。
+- [命令行宿主](https://framework.docs.xihanfun.com/protocols/command-line): 这一页讲命令行宿主：它怎样把命令行参数翻译成内核调用，怎样启用，内置命令有哪些，调用操作时载荷从哪里来、上下文选项有哪些，输出与退出码的约定，怎样写自己的命令，以及怎样经 stdio 提供 MCP。
+- [gRPC](https://framework.docs.xihanfun.com/protocols/grpc): 这一章讲 HTTP 之外的协议载体。
+- [MCP](https://framework.docs.xihanfun.com/protocols/mcp): 这一页讲 MCP（Model Context Protocol）适配器：怎样把操作发布成大模型可调用的 tool，`tools/list` 里的名字、Schema、标题描述与注解从哪里来，`tools/call` 怎样经过完整管道并区分业务失败与协议错误，HTTP 与 stdio 两种传输各自的规则，以及可配置的选项。
+
+## 定时任务
+
+- [集群与管理](https://framework.docs.xihanfun.com/scheduling/cluster): 这一页接着作业与计划讲两件事：一是运行时管理，用 `IJobScheduler` 登记、暂停、恢复、触发、取消作业，查运行历史，恢复改过的代码作业；二是多实例部署，引擎怎样轮询与抢占、`IJobStore` 共享与否的差别、三种领导选举、调度事件、配置与错误码。
+- [作业与计划](https://framework.docs.xihanfun.com/scheduling/jobs): 这一章讲怎样在应用里按计划运行后台工作。
+
+## 工作流
+
+- [活动与扩展](https://framework.docs.xihanfun.com/workflow/activities): 这一页讲工作流的「零件」与扩展点：19 个内置活动与它们的属性、条件与模板共用的表达式语言、节点失败后的重试 / 继续 / 补偿、故障原因与设计期诊断的本地化展示、怎样写自己的活动、引擎发出的事件、Provider 要实现的存储与实例锁契约、配置与错误码。
+- [定义与发布](https://framework.docs.xihanfun.com/workflow/definitions): 这一页讲工作流子系统的前半段：流程定义是什么模型、怎样启用引擎、怎样用构造器或 JSON 写出一份定义、怎样校验与发布、怎样管理版本与列出定义。
+- [实例与用户任务](https://framework.docs.xihanfun.com/workflow/instances): 这一页讲流程跑起来之后的事：怎样启动实例（含信号启动与定时启动）、怎样处理待办（认领、释放、退回、催办、会签阈值、截止与提醒）、怎样写自定义指派规则、实例在等什么又怎样被唤醒（书签、信号、外部任务）、怎样查询与控制实例。
+
+## 对象存储
+
+- [分片、预签名与命名实例](https://framework.docs.xihanfun.com/object-storage/advanced): 这一页讲对象存储的进阶能力：只读一段的范围读取、大文件的分片上传与断点续传、让客户端不带凭据直接上传下载的预签名地址（S3 原生签名与宿主代收发）、服务端只发票不经手内容的大文件直传，以及一个应用同时用多个存储时的命名存储实例。
+- [读写与列举](https://framework.docs.xihanfun.com/object-storage/basics): 这一页讲对象存储的基本用法：容器与键的文法、怎样启用文件系统或 S3 实现、怎样写入、读取、删除和按前缀分页列举对象，两个实现的差异与错误码。
+
+## 通用能力
+
+- [审计](https://framework.docs.xihanfun.com/common/auditing): 这一章讲框架怎样把一次调用记成审计事件、哪些调用会被记录、处理器怎样补充动作与资源、怎样记录调用来源、怎样按条件分页查询，以及内存与数据库两种存储的取舍。
+- [全球化和本地化](https://framework.docs.xihanfun.com/common/localization): 这一章讲框架的文案与多语言：消息键、每种语言一个文件的语言文件、`key.L()` 怎样拿到调用方语言的文案、`Error` 怎样只带键与参数而由宿主在出口翻译、`Accept-Language` 怎样协商成启用的区域，以及怎样把翻译放进数据库让运营人员在线修改。
+- [日志与可观测性](https://framework.docs.xihanfun.com/common/observability): 这一章讲内核为每次调用发出的追踪与指标、框架与应用怎样写日志、怎样用 `Observability.OpenTelemetry` 把三类信号导出到后端并控制采样、怎样给业务打点，以及用 `Observability.Host` 读取进程与主机的运行信息做服务监控页。
+- [弹性与限流](https://framework.docs.xihanfun.com/common/resilience): 这一章讲 Resilience 阶段的四件事：截止时间、熔断、固定窗口限流与并发上限，以及怎样按操作配置它们。
+- [JSON 序列化与 Native AOT](https://framework.docs.xihanfun.com/common/serialization): 这一章讲框架为什么要求源生成的序列化、哪些地方需要登记 `JsonSerializerContext`、怎样把上下文插进 HTTP 的解析链、缓存与领域事件对序列化器的要求、哪些包能以 Native AOT 发布，以及发布 AOT 应用的步骤。
+
+## AI
+
+- [模型与对话](https://framework.docs.xihanfun.com/ai/chat): 这一页讲 AI 子系统的基础：框架为什么直接以 Microsoft.Extensions.AI 为线格式、怎样配置 OpenAI 兼容的 Provider 并按名字解析模型客户端、聊天入口 `IAIChat` 怎样把提示词、护栏与工具叠在模型调用之上、超时与取消怎样归因、配置与错误码。
+- [工具与知识库](https://framework.docs.xihanfun.com/ai/tools): 这一页讲怎样让模型「做事」和「有依据」：`Expose.Ai` 把已有的操作契约变成模型可调用的工具，工具经完整管道执行、失败以 JSON 交给模型；知识库流水线把文档切块、嵌入、写入向量存储，检索后拼进提示词；`AI.VectorData` 把 `IKnowledgeStore` 适配到 `Microsoft.Ext…
+
+## 插件
+
+- [进程外插件](https://framework.docs.xihanfun.com/plugins/out-of-process): 进程外插件是宿主启动的子进程，经本机 gRPC 按协议 `xihan.plugin.v1` 与宿主通信。
+- [隔离级别与清单](https://framework.docs.xihanfun.com/plugins/overview): 插件是在运行期装载、与宿主隔离的代码。
+- [Wasm 插件](https://framework.docs.xihanfun.com/plugins/wasm): Wasm 插件是在宿主进程内、由 wasmtime 沙箱运行的 WebAssembly 模块。
+
+## 托管、部署、发布
+
+- [Kubernetes](https://framework.docs.xihanfun.com/deployment/kubernetes): 这一页讲 `xihan pack` 生成的 Deployment 在集群里怎样与框架对齐：三个探针与有序停机、ConfigMap 配置热更新、用 Lease 做领导选举，以及怎样在本机的 kind 集群上逐项验证。
+- [应用清单与 xihan pack](https://framework.docs.xihanfun.com/deployment/pack): 这一页讲怎样用应用清单 `xihan.app.json` 描述一个可部署的应用，再用命令行工具 `xihan pack` 生成 Dockerfile、Kustomize、Compose 与 Aspire 产物，以及资源绑定、消息代理与 Native AOT 在打包时要定下的事。
+
+## 测试指南
+
+- [单元与集成测试](https://framework.docs.xihanfun.com/testing/basics): 这一页讲怎样给 XiHan 应用建测试项目，怎样用 `Testing` 包的测试宿主在内存里装配应用并经完整管道调用，怎样测一个中间件、测一个操作，以及用 SQLite 文件库时要注意什么。
+- [一致性套件与门禁](https://framework.docs.xihanfun.com/testing/conformance): 这一页讲每个子系统的 `<领域>.Conformance` 包怎么用（继承抽象套件类、提供实现），插件协议的两份黑盒套件 `Plugins.Conformance` 与 `xihan-conformance`，以及框架仓库的架构测试与 CI 门禁。
+
+## 扩展与二次开发
+
+- [能力包与中间件](https://framework.docs.xihanfun.com/extending/feature): 这一页讲框架的三条扩展轴各写什么，然后动手写一个应用自己的能力包（清单、权限码、操作登记）和一个管道中间件（`IPipelineMiddleware`、阶段与位置、相对次序），最后讲包 ID、清单 ID、能力 ID、错误码与健康项的命名规则。
+- [写一个 Provider](https://framework.docs.xihanfun.com/extending/provider): Provider 是为某个子系统能力提供另一种实现的特性：Redis 缓存、PostgreSQL 持久化、Kubernetes 领导选举都是 Provider。
+
+## AI 辅助开发
+
+- [For Agents](https://framework.docs.xihanfun.com/agents/agents): 本页给 Claude Code、Cursor、Codex、GitHub Copilot 这类 AI 编程工具使用：一段可以直接放进项目说明文件的提示词，以及框架为 AI 工具准备的资料从哪里取。
+- [xihan 工具](https://framework.docs.xihanfun.com/agents/cli): 本页说明 AI 工具与开发者如何用命令行核对一个基于本框架的应用：应用自带的命令行宿主命令，以及转发这些命令、生成部署产物的 `xihan` 工具。
+- [LLMs.txt](https://framework.docs.xihanfun.com/agents/llms): 文档站在构建时产出一组给大语言模型读取的纯文本资产，内容与站点正文同源。
+- [MCP Server](https://framework.docs.xihanfun.com/agents/mcp): 本页说明两种 MCP 服务端怎样接入 Claude Code、Cursor、VS Code、Codex 等 AI 工具：框架自带的知识库服务 `xihan mcp`，让 AI 工具按版本查证包、能力、配置键与文档；以及把基于本框架的应用作为 MCP 服务端，让 AI 工具在开发过程中直接调用应用的操作。
+
+## 包参考
+
+- [XiHan.Framework.AI.Abstractions](https://framework.docs.xihanfun.com/packages/ai-abstractions): AI 的抽象包：以 `Microsoft.Extensions.AI` 为线格式的 Provider 目录、带提示词 / 护栏 / 工具的聊天入口、把操作契约桥接成模型工具的目录，以及知识库流水线与存储契约。
+- [XiHan.Framework.AI.OpenAI](https://framework.docs.xihanfun.com/packages/ai-openai): AI 的 OpenAI 兼容 Provider：`Kind = openai` 的 Provider 都由本包按配置创建聊天客户端与嵌入生成器，覆盖 OpenAI 官方端点与 Ollama、vLLM、LM Studio 等 OpenAI 兼容端点。
+- [XiHan.Framework.AI.VectorData](https://framework.docs.xihanfun.com/packages/ai-vectordata): AI 知识库的存储 Provider：把 `IKnowledgeStore` 映射到应用登记的 `Microsoft.Extensions.VectorData` 向量存储 `VectorStore`，任何连接器都可以用。
+- [XiHan.Framework.Auditing.Abstractions](https://framework.docs.xihanfun.com/packages/auditing-abstractions): 审计的抽象包：Observe 阶段的审计中间件、调用上下文上补充动作 / 资源 / 细节的扩展、查询契约 `IAuditTrail` 与选项。
+- [XiHan.Framework.Auditing.Database](https://framework.docs.xihanfun.com/packages/auditing-database): 审计的数据库 Provider：事件先进有界队列，后台批量写成 `AuditRecord`，查询按写入序号分页。
+- [XiHan.Framework.Auditing.InMemory](https://framework.docs.xihanfun.com/packages/auditing-inmemory): 审计的默认实现：有界环形缓冲同时充当接收器与查询，每条事件可同时写一条日志。
+- [XiHan.Framework.Caching.Abstractions](https://framework.docs.xihanfun.com/packages/caching-abstractions): 缓存子系统的抽象包：字节存储 `ICacheStore`、类型化缓存 `ICache` / `ISharedCache`、序列化器、分布式锁、Idempotency 阶段中间件与 `IDistributedCache` 适配都在这里，能力 `caching.local@1` 与 `caching.distributed@1` 由 Provider 提供。
+- [XiHan.Framework.Caching.Hybrid](https://framework.docs.xihanfun.com/packages/caching-hybrid): 两级缓存 Provider：提供 `caching.local@1`，把 `ICache` 换成「L1 进程内对象缓存 + L2 被选中的共享缓存」，读路径少一次网络往返，适用于多实例部署下读多写少的数据。
+- [XiHan.Framework.Caching.InMemory](https://framework.docs.xihanfun.com/packages/caching-inmemory): 缓存的默认实现：有界 LRU 的字节存储与对象缓存，同时提供 `caching.local@1` 与 `caching.distributed@1`。
+- [XiHan.Framework.Caching.Redis](https://framework.docs.xihanfun.com/packages/caching-redis): `caching.distributed@1` 的 Redis Provider，基于 StackExchange.Redis：装配后共享缓存、`ICacheStore`、分布式锁、`IDistributedCache` 与 Idempotency 阶段中间件改由 Redis 承担，适用于多实例部署。
+- [XiHan.Framework.Caching.Remote](https://framework.docs.xihanfun.com/packages/caching-remote): `caching.distributed@1` 的远程 Provider 适配器：存储由任意语言写的进程外插件承担，插件实现固定的操作集 `cache-entries.*`，本包把它接成共享缓存、分布式锁、`IDistributedCache` 与幂等去重。
+- [XiHan.Framework.Cli](https://framework.docs.xihanfun.com/packages/cli): 命令行工具 `xihan`（.NET 工具包，RFC-0016）：`pack` 从应用清单 `xihan.app.json` 生成 Dockerfile、Kustomize、Compose 与 Aspire 产物，`graph` / `pipeline` / `operations` / `invoke` 转发给应用自…
+- [XiHan.Framework.Configuration.Abstractions](https://framework.docs.xihanfun.com/packages/configuration-abstractions): 配置子系统的抽象包：定义远程配置客户端 `IRemoteConfigurationClient` 与密钥库 `ISecretStore` 两个 Provider 契约，以及把它们接进 `IConfigurationBuilder` 的配置源。
+- [XiHan.Framework.Configuration.Nacos](https://framework.docs.xihanfun.com/packages/configuration-nacos): `configuration.remote@1` 的 Nacos Provider：直接调用 Nacos 的 HTTP 配置接口取整份文档，按内容 MD5 长轮询，不依赖 Nacos SDK。
+- [一致性套件](https://framework.docs.xihanfun.com/packages/conformance): 全部 `<领域>.Conformance` 包与插件协议的 `Plugins.Conformance` 汇总：每个包是一组 xUnit v3 抽象测试类，Provider（或插件）的测试项目继承基类、实现工厂方法，全部用例随之执行。
+- [XiHan.Framework.Domain](https://framework.docs.xihanfun.com/packages/domain): 领域契约包：实体协议、值对象标记、领域事件与规约。
+- [XiHan.Framework.Hosting.AspNetCore](https://framework.docs.xihanfun.com/packages/hosting-aspnetcore): ASP.NET Core 宿主适配：把 HTTP 请求翻译成调用上下文并经内核管道执行，映射探针端点，用 RFC 9457 Problem Details 回写失败结果。
+- [XiHan.Framework.Hosting.CommandLine](https://framework.docs.xihanfun.com/packages/hosting-commandline): 命令行宿主：在 .NET 通用宿主里把命令行参数翻译成内核调用，内置 `help`、`graph`、`pipeline`、`operations`、`invoke` 命令。
+- [包总览](https://framework.docs.xihanfun.com/packages/): XiHan Framework 由一组可以独立引用的 NuGet 包组成，按环层组织。
+- [XiHan.Framework.Kernel.Analyzers](https://framework.docs.xihanfun.com/packages/kernel-analyzers): Roslyn 分析器：把公开 API 的稳定性标注与级别依赖、Stable 不用可选参数、类型命名与 Ring 0/1 零反射这些规则交给编译器执行，诊断 XH0001–XH0008 全部是错误级。
+- [XiHan.Framework.Kernel.Generators](https://framework.docs.xihanfun.com/packages/kernel-generators): Roslyn 源生成器：扫描标注 `[Operation]` 且实现 `IOperation<TRequest, TResponse>` 的类，生成操作登记代码 `GeneratedOperations` 与每个操作的请求 / 响应 JSON Schema。
+- [XiHan.Framework.Kernel](https://framework.docs.xihanfun.com/packages/kernel): 微内核：应用构建、能力图谱求解、执行管道与内置中间件、操作契约与调用器、安全原语、健康与插件抽象。
+- [XiHan.Framework.Localization.Abstractions](https://framework.docs.xihanfun.com/packages/localization-abstractions): 本地化的抽象包：区域名与内置 10 种区域、按键与区域取模板的消息目录 `MessageCatalog`、显式区域的解析接口 `IMessageLocalizer` 与目录注册。
+- [XiHan.Framework.Localization.Database](https://framework.docs.xihanfun.com/packages/localization-database): `localization.resources@1` 的数据库 Provider：翻译以实体 `MessageTranslation` 经仓储读写，宿主就绪后装进内存快照并按周期刷新，数据库里的翻译优先于嵌入的语言文件。
+- [XiHan.Framework.Localization.InMemory](https://framework.docs.xihanfun.com/packages/localization-inmemory): 本地化的默认实现：汇集容器里注册的全部消息目录，按精确区域、同语言、默认区域、`en-US` 的回退链取模板并格式化，同时作为 `MessageScope` 的解析器让 `key.L()` 在任何地方可用。
+- [XiHan.Framework.Messaging.Abstractions](https://framework.docs.xihanfun.com/packages/messaging-abstractions): 消息子系统的抽象包：CloudEvents 信封、发布者与代理契约、处理器订阅、经内核管道的派发、领域事件派发与事务性发件箱。
+- [XiHan.Framework.Messaging.InMemory](https://framework.docs.xihanfun.com/packages/messaging-inmemory): 消息的默认实现：进程内的内存代理，每个主题一条有界通道、单消费者顺序投递、重试与死信，提供 `messaging.queue@1`。
+- [XiHan.Framework.Messaging.Kafka](https://framework.docs.xihanfun.com/packages/messaging-kafka): `messaging.queue@1` 与 `messaging.stream@1` 的 Kafka Provider，基于 Confluent.Kafka：幂等生产者、按消费组提交位点、分区键有序、按时刻重放、重试与死信主题。
+- [XiHan.Framework.Messaging.RabbitMQ](https://framework.docs.xihanfun.com/packages/messaging-rabbitmq): `messaging.queue@1` 的 RabbitMQ Provider，基于 RabbitMQ.Client 7：发布到一个 direct 交换机，订阅方为每个主题声明持久队列并绑定，手动确认、重试与死信队列。
+- [XiHan.Framework.Messaging.Redis](https://framework.docs.xihanfun.com/packages/messaging-redis): `messaging.queue@1` 的 Redis Streams Provider，基于 StackExchange.Redis：每个主题一条流，竞争订阅用消费组，广播订阅每个实例一个组，处理成功才确认，超时未确认的条目由别的实例回收。
+- [XiHan.Framework.MultiTenancy.Abstractions](https://framework.docs.xihanfun.com/packages/multitenancy-abstractions): 多租户的抽象包：定义租户信息、租户存储、租户解析器、Tenant 阶段中间件与租户分片契约，能力 `multitenancy.context@1` 与 `multitenancy.sharding@1` 由多租户 Provider 提供。
+- [XiHan.Framework.MultiTenancy.Database](https://framework.docs.xihanfun.com/packages/multitenancy-database): 多租户的数据库 Provider：租户目录是数据库里的 `TenantRecord` 行，经 `persistence.relational@1` 的仓储读写，提供 `multitenancy.context@1` 与 `multitenancy.sharding@1`。
+- [XiHan.Framework.MultiTenancy.InMemory](https://framework.docs.xihanfun.com/packages/multitenancy-inmemory): 多租户的默认实现：启动时从配置装载租户，存在进程内存里，有容量上限，运行时可增删。
+- [XiHan.Framework.ObjectStorage.Abstractions](https://framework.docs.xihanfun.com/packages/objectstorage-abstractions): 对象存储的抽象包：容器、键与元数据，`IBlobStore`（批量写入与删除、按键读取、范围读取、按前缀分页列举），可选的分片上传 `IBlobMultipartStore` 与预签名 `IBlobUrlSigner`，以及命名存储实例的注册表 `BlobStores`。
+- [XiHan.Framework.ObjectStorage.FileSystem](https://framework.docs.xihanfun.com/packages/objectstorage-filesystem): 对象存储的默认实现：本地目录按容器与键存放内容与元数据，原子替换写入，`ETag` 是内容的 SHA-256，带总量与单对象配额。
+- [XiHan.Framework.ObjectStorage.S3](https://framework.docs.xihanfun.com/packages/objectstorage-s3): 对象存储的 S3 Provider：容器即桶，键即对象键，经 AWS SDK 访问 Amazon S3 与兼容服务（MinIO、阿里云 OSS、腾讯云 COS、Cloudflare R2 等），同时提供原生分片上传与预签名地址。
+- [XiHan.Framework.Observability.Abstractions](https://framework.docs.xihanfun.com/packages/observability-abstractions): 可观测性的抽象包：两项能力的 ID（导出与运行信息），以及进程与主机运行信息的契约 `IHostMonitor` 与七份记录。
+- [XiHan.Framework.Observability.Host](https://framework.docs.xihanfun.com/packages/observability-host): 运行信息的默认实现：单例 `IHostMonitor` 读进程与所在主机的 CPU、内存、磁盘、网卡、GPU、主板与运行时长，后台采样 CPU 使用率与网卡速率。
+- [XiHan.Framework.Observability.OpenTelemetry](https://framework.docs.xihanfun.com/packages/observability-opentelemetry): 可观测性导出的默认实现：把内核与 .NET、ASP.NET Core 内置的 Activity、Meter 与日志接到 OpenTelemetry，按配置启用 OTLP 与控制台导出器、采样与资源属性。
+- [XiHan.Framework.Persistence.Abstractions](https://framework.docs.xihanfun.com/packages/persistence-abstractions): 持久化抽象包：仓储、工作单元、查询、实体登记、Transaction 阶段的中间件、协议约定与标识生成。
+- [XiHan.Framework.Persistence.EntityFrameworkCore](https://framework.docs.xihanfun.com/packages/persistence-entityframeworkcore): `persistence.relational@1` 的 Entity Framework Core Provider：应用持有自己的 `DbContext`，框架在它之上提供仓储、事务型工作单元与协议约定。
+- [XiHan.Framework.Persistence.Generators](https://framework.docs.xihanfun.com/packages/persistence-generators): 持久化的 Roslyn 源生成器：从本程序集实现 `IEntity<TKey>` 的实体类生成仓储登记、EF Core 实体登记与软删除 / 租户过滤规约。
+- [XiHan.Framework.Persistence.InMemory](https://framework.docs.xihanfun.com/packages/persistence-inmemory): `persistence.relational@1` 的内存默认实现：每种实体一张有界的表，工作单元用覆盖层实现读己之写。
+- [XiHan.Framework.Persistence.SqlSugar](https://framework.docs.xihanfun.com/packages/persistence-sqlsugar): `persistence.relational@1` 的 SqlSugar Provider：以作用域内的 `ISqlSugarClient` 实现仓储与事务型工作单元，实体不继承 SqlSugar 基类、不必标注 `[SugarColumn]`，映射由协议约定推出。
+- [XiHan.Framework.Plugins.InProcess](https://framework.docs.xihanfun.com/packages/plugins-inprocess): 进程内插件宿主（`isolation: in-process`）：用可收集的 `AssemblyLoadContext` 加载插件程序集，为每个插件建立独立的服务容器，负责启动、停止、卸载与状态上报。
+- [XiHan.Framework.Plugins.OutOfProcess](https://framework.docs.xihanfun.com/packages/plugins-outofprocess): 进程外插件宿主（`isolation: out-of-process`）：按协议 `xihan.plugin.v1` 启动插件子进程、握手、配置、监视健康与崩溃重启，把插件声明的操作登记为经完整管道的代理操作、把订阅的消息投递给插件，并提供受权限约束的宿主回调。
+- [XiHan.Framework.Plugins.Protocol](https://framework.docs.xihanfun.com/packages/plugins-protocol): 插件协议 `xihan.plugin.v1`（RFC-0017）的 .NET 类型：端点与握手行、版本协商、环境变量名、`PLUGINS_*` 错误码与消息键。
+- [XiHan.Framework.Plugins.Wasm](https://framework.docs.xihanfun.com/packages/plugins-wasm): Wasm 插件宿主（`isolation: wasm`，Experimental）：用 wasmtime 在进程内沙箱里运行 WASI preview 1 reactor 模块，消息与进程外插件同为 `xihan.plugin.v1`，按 proto3 JSON 经导出函数与线性内存传递。
+- [XiHan.Framework.Primitives](https://framework.docs.xihanfun.com/packages/primitives): 原语层：零行为、零依赖的原语与契约，跨语言语义由 XiHan Spec 的 RFC-0001 定义。
+- [XiHan.Framework.Profiles.Full](https://framework.docs.xihanfun.com/packages/profiles-full): Full 组合包（元包）：Standard 加对象存储、调度、审计、工作流的默认实现，AI 工具目录，OpenTelemetry 导出与运行信息，以及 HTTP、gRPC、MCP、CloudEvents 四种协议适配器，`UseFullProfile()` 装配它们。
+- [XiHan.Framework.Profiles.Minimal](https://framework.docs.xihanfun.com/packages/profiles-minimal): Minimal 组合包（元包）：一个包引用带上原语层、内核、ASP.NET Core 宿主与内存本地化，`UseMinimalProfile()` 只装配本地化默认实现，不装配任何业务子系统。
+- [XiHan.Framework.Profiles.Standard](https://framework.docs.xihanfun.com/packages/profiles-standard): Standard 组合包（元包）：Minimal 加 `Domain` 与持久化、缓存、多租户、安全、消息五个子系统的抽象与内存默认实现，`UseStandardProfile()` 装配它们。
+- [XiHan.Framework.Protocols.CloudEvents](https://framework.docs.xihanfun.com/packages/protocols-cloudevents): CloudEvents 协议适配器，提供 `protocols.cloudevents@1`：消息子系统信封的 CloudEvents 1.0 HTTP 协议绑定。
+- [XiHan.Framework.Protocols.Grpc](https://framework.docs.xihanfun.com/packages/protocols-grpc): gRPC 协议适配器，提供 `protocols.grpc@1`：把 `Expose.Grpc` 的操作契约发布成 gRPC 一元方法（服务 `{Resource}`、方法 `{Verb}`），以操作的 JSON Schema 作为 protobuf 描述在两种线格式之间转换，并发布由同一份描述生成的 `.proto`。
+- [XiHan.Framework.Protocols.Http](https://framework.docs.xihanfun.com/packages/protocols-http): HTTP 协议适配器，提供 `protocols.http@1`：按操作 ID 推导路由（可显式覆盖），把路由值、JSON 请求体与查询串绑定成操作载荷，在 ASP.NET Core 宿主的内核管道内执行操作，并从同一份契约生成 OpenAPI 3.1 文档。
+- [XiHan.Framework.Protocols.Mcp](https://framework.docs.xihanfun.com/packages/protocols-mcp): MCP（Model Context Protocol）协议适配器，提供 `protocols.mcp@1`：把 `Expose.Mcp` 的操作契约发布为 MCP tool，JSON-RPC 2.0，支持 Streamable HTTP 与 stdio 两种传输。
+- [XiHan.Framework.Scheduling.Abstractions](https://framework.docs.xihanfun.com/packages/scheduling-abstractions): 调度子系统的契约与引擎，包括作业与触发器、计划（间隔、cron、一次、手动）、排除日历、misfire、经内核管道的派发、作业存储契约 `IJobStore`、集群分发引擎 `JobSchedulerEngine` 与租约式领导选举 `ILeaderElection`。
+- [XiHan.Framework.Scheduling.Database](https://framework.docs.xihanfun.com/packages/scheduling-database): 调度的数据库 Provider，提供 `scheduling.jobs@1` 与 `scheduling.leader@1`。
+- [XiHan.Framework.Scheduling.InMemory](https://framework.docs.xihanfun.com/packages/scheduling-inmemory): 调度的默认实现，同时提供 `scheduling.jobs@1`（进程内作业存储加抽象包的引擎）与 `scheduling.leader@1`（进程内租约）。
+- [XiHan.Framework.Scheduling.Kubernetes](https://framework.docs.xihanfun.com/packages/scheduling-kubernetes): `scheduling.leader@1` 的 Kubernetes Provider：用 `coordination.k8s.io/v1` 的 Lease 对象在 Pod 之间选出领导，直接调用 API Server，不依赖 Kubernetes 客户端库。
+- [XiHan.Framework.Security.Abstractions](https://framework.docs.xihanfun.com/packages/security-abstractions): 安全的抽象包：凭据与认证处理器、授权要求与策略目录、RBAC 授予存储与检查器、收窄过滤器与授予来源、Authenticate / Authorize 阶段中间件，以及条件引擎与 IP 归属地契约。
+- [XiHan.Framework.Security.Database](https://framework.docs.xihanfun.com/packages/security-database): 授权的数据库 Provider：权限授予是数据库里的 `PermissionGrantRecord` 行，经 `persistence.relational@1` 的仓储读写，授予存储带有界的 TTL 缓存。
+- [XiHan.Framework.Security.InMemory](https://framework.docs.xihanfun.com/packages/security-inmemory): 安全的默认实现：从配置装载 API Key 主体与权限授予，提供 `security.authentication@1`（`ApiKey` 方案）与 `security.authorization@1`（RBAC 授予存储）。
+- [XiHan.Framework.Security.Ip2Region](https://framework.docs.xihanfun.com/packages/security-ip2region): IP 归属地的 ip2region 离线库 Provider：按宿主提供的 IPv4 / IPv6 xdb 文件把 IP 地址解析为国家、省份、城市与运营商，不访问网络，提供 `security.ip-region@1`。
+- [XiHan.Framework.Security.Jwt](https://framework.docs.xihanfun.com/packages/security-jwt): 认证的 JWT Provider：校验 HS256 对称密钥签名的 `Bearer` 令牌（签名、有效期、签发者、受众），把令牌映射为主体，提供 `security.authentication@1`。
+- [XiHan.Framework.Security.OpenIdConnect](https://framework.docs.xihanfun.com/packages/security-openidconnect): 认证的 OpenID Connect Provider：从签发者的发现文档与 JWKS 取签名密钥，校验 `Bearer` 令牌（非对称签名、签发者、受众、有效期），密钥轮换时按需刷新，提供 `security.authentication@1`。
+- [XiHan.Framework.Security.WebAuthn](https://framework.docs.xihanfun.com/packages/security-webauthn): 通行密钥（WebAuthn）的依赖方实现：生成注册与认证仪式的选项，按 RFC-0008「WebAuthn」的顺序核对浏览器交回的响应，提供 `security.webauthn@1`。
+- [XiHan.Framework.Testing](https://framework.docs.xihanfun.com/packages/testing): 测试基座：没有 HTTP 的内存测试宿主、可注入行为的特性桩、按能力 ID 文本构造清单与独立调用上下文的工具。
+- [XiHan.Framework.Workflow.Abstractions](https://framework.docs.xihanfun.com/packages/workflow-abstractions): 工作流子系统的契约与引擎：定义模型与校验、定义目录、19 个内置活动、实例与书签、用户任务与外部任务、表达式语言、存储契约，以及经内核管道执行活动的引擎与到期书签轮询器。
+- [XiHan.Framework.Workflow.Database](https://framework.docs.xihanfun.com/packages/workflow-database): 工作流的数据库 Provider，提供 `workflow.execution@1`。
+- [XiHan.Framework.Workflow.InMemory](https://framework.docs.xihanfun.com/packages/workflow-inmemory): 工作流的默认实现，提供 `workflow.execution@1`：有界内存的定义、实例与书签存储，进程内实例锁，单进程轮询到期书签。
